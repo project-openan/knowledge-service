@@ -34,6 +34,7 @@ def main():
         kbase_path = '/knowledge-bases/' + knowledge_base.json()['id']
         request(session, 'GET', kbase_path, 200)
         request(session, 'GET', f'{kbase_path}/directories', 200)
+        request(session, 'GET', f'{kbase_path}/chunks', 200)
         request(session, 'DELETE', kbase_path, 204)
     print('Compose smoke test passed')
 
