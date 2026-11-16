@@ -1,0 +1,91 @@
+# OpenAN Knowledge Service 部署配置。
+# 凭据由 .env 提供，示例见 .env.example。
+name: openan-knowledge-service
+
+services:
+  postgresql:
+    image: pgvector/pgvector:0.8.7-pg16
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-openan}
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD required}
+      # 数据库初始化脚本使用以下配置创建应用角色。
+      RKB_DB_USER: ${RKB_DB_USER:-rag_app}
+      RKB_DB_PASSWORD: ${RKB_DB_PASSWORD:?RKB_DB_PASSWORD required}
+    command:
+      - postgres
+      - -c
+      - shared_preload_libraries=pg_stat_statements
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./init/pg:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres} -d ${POSTGRES_DB:-openan}"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+    restart: unless-stopped
+
+  opensearch:
+    image: opensearchproject/opensearch:2.19.6
+    environment:
+      discovery.type: single-node
+      plugins.security.disabled: "true"
+      OPENSEARCH_INITIAL_ADMIN_PASSWORD: ${OS_ADMIN_PASSWORD:-ChangeMe_dev_0nly_2026}
+      OPENSEARCH_JAVA_OPTS: -Xms512m -Xmx512m
+    volumes:
+      - osdata:/usr/share/opensearch/data
+    healthcheck:
+      test: ["CMD-SHELL", "curl -s http://localhost:9200/_cluster/health | grep -qE 'status.{1,3}(green|yellow)'"]
+      interval: 10s
+      timeout: 5s
+      retries: 30
+    restart: unless-stopped
+
+  backend:
+    build:
+      context: ../backend
+      args:
+        PIP_INDEX_URL: ${PIP_INDEX_URL:-}
+        PIP_TRUSTED_HOST: ${PIP_TRUSTED_HOST:-}
+    environment:
+      KNOWLEDGE_BASE_HOST: 0.0.0.0
+      KNOWLEDGE_BASE_PORT: 8091
+      POSTGRES_HOST: postgresql
+      RKB_DB_HOST: postgresql
+      RKB_DB_PORT: "5432"
+      RKB_DB_NAME: ${POSTGRES_DB:-openan}
+      EMBEDDING_MODEL: ${EMBEDDING_MODEL:-bge-base-zh-v1.5}
+      EMBEDDING_DIMENSION: ${EMBEDDING_DIMENSION:-1024}
+      RKB_ES_HOST: opensearch
+      RKB_ES_PORT: "9200"
+      RKB_ES_USERNAME: ""
+      RKB_ES_PASSWORD: ""
+      POSTGRES_PORT: "5432"
+      POSTGRES_DB: ${POSTGRES_DB:-openan}
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      RKB_DB_USER: ${RKB_DB_USER:-rag_app}
+      RKB_DB_PASSWORD: ${RKB_DB_PASSWORD:?RKB_DB_PASSWORD required}
+      AUTH_MODE: ${AUTH_MODE:-local}
+      RKB_SECRET_KEY: ${RKB_SECRET_KEY:?RKB_SECRET_KEY required}
+      RKB_ADMIN_USERNAME: ${RKB_ADMIN_USERNAME:-admin}
+      RKB_ADMIN_PASSWORD: ${RKB_ADMIN_PASSWORD:-}
+      RKB_ADMIN_PASSWORD_FILE: ${RKB_ADMIN_PASSWORD_FILE:-}
+      RKB_STORAGE_BACKEND: ${RKB_STORAGE_BACKEND:-local}
+      STORAGE_MAIN_PATH: /data/kb
+    volumes:
+      - kbdata:/data/kb
+    ports:
+      - "${KNOWLEDGE_BASE_PORT:-8091}:8091"
+    depends_on:
+      postgresql:
+        condition: service_healthy
+      opensearch:
+        condition: service_healthy
+    restart: unless-stopped
+
+volumes:
+  pgdata:
+  kbdata:
+  osdata:
