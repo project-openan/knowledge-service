@@ -107,8 +107,8 @@ def test_protected_path_requires_a_session(client):
 
 
 def test_valid_cookie_sets_auth_user_on_request_state(client):
-    response = client.get(RKB_PREFIX + '/knowledge-bases',
-                          cookies={sessions.COOKIE_NAME: 'token'})
+    client.cookies.set(sessions.COOKIE_NAME, 'token')
+    response = client.get(RKB_PREFIX + '/knowledge-bases')
 
     assert response.status_code == 200
     assert response.json() == {'user': 'alice'}
@@ -120,8 +120,8 @@ def test_expired_session_returns_401(client, monkeypatch):
 
     monkeypatch.setattr(service, 'validate_session', _raise)
 
-    response = client.get(RKB_PREFIX + '/knowledge-bases',
-                          cookies={sessions.COOKIE_NAME: 'token'})
+    client.cookies.set(sessions.COOKIE_NAME, 'token')
+    response = client.get(RKB_PREFIX + '/knowledge-bases')
 
     assert response.status_code == 401
     assert _code(response) == 'session_expired'
@@ -133,35 +133,33 @@ def test_missing_auth_table_returns_503(client, monkeypatch):
 
     monkeypatch.setattr(service, 'validate_session', _raise)
 
-    response = client.get(RKB_PREFIX + '/knowledge-bases',
-                          cookies={sessions.COOKIE_NAME: 'token'})
+    client.cookies.set(sessions.COOKIE_NAME, 'token')
+    response = client.get(RKB_PREFIX + '/knowledge-bases')
 
     assert response.status_code == 503
     assert _code(response) == 'auth_not_initialized'
 
 
 def test_unsafe_method_requires_a_matching_origin(client):
-    response = client.post(RKB_PREFIX + '/knowledge-bases',
-                           cookies={sessions.COOKIE_NAME: 'token'})
+    client.cookies.set(sessions.COOKIE_NAME, 'token')
+    response = client.post(RKB_PREFIX + '/knowledge-bases')
     assert response.status_code == 403
     assert _code(response) == 'csrf_rejected'
 
     response = client.post(RKB_PREFIX + '/knowledge-bases',
-                           headers={'Origin': 'http://testserver'},
-                           cookies={sessions.COOKIE_NAME: 'token'})
+                           headers={'Origin': 'http://testserver'})
     assert response.status_code == 200
 
 
 def test_must_change_password_blocks_everything_but_me_and_password(client, monkeypatch):
     monkeypatch.setattr(service, 'validate_session', lambda token: MUST_CHANGE)
 
-    blocked = client.get(RKB_PREFIX + '/knowledge-bases',
-                         cookies={sessions.COOKIE_NAME: 'token'})
+    client.cookies.set(sessions.COOKIE_NAME, 'token')
+    blocked = client.get(RKB_PREFIX + '/knowledge-bases')
     assert blocked.status_code == 403
     assert _code(blocked) == 'password_change_required'
 
-    allowed = client.get(AUTH_PREFIX + '/me',
-                         cookies={sessions.COOKIE_NAME: 'token'})
+    allowed = client.get(AUTH_PREFIX + '/me')
     assert allowed.status_code == 200
 
 

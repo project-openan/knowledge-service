@@ -31,6 +31,12 @@ def _assert(cond, msg):
         raise AssertionError(msg)
 
 
+#: 独立脚本模式（``main()``）打印每条用例的详情。pytest 模式下测试函数**必须
+#: 返回 None**（返回值触发 ``PytestReturnNotNoneWarning``，且语义含糊），所以
+#: 详情统一写进这里，测试函数一律不 ``return``。
+_DETAILS: dict = {}
+
+
 CHINESE_PARAS = [
     "人工智能是计算机科学的一个重要分支。它研究如何让机器模拟人类的智能行为。近年来深度学习取得了巨大进展。",
     "自然语言处理是人工智能的核心方向之一。它致力于让计算机理解并生成人类语言。大语言模型推动了这一领域的发展。",
@@ -129,7 +135,7 @@ def test_splitter_no_empty_no_overlong_no_loss():
         if len(s_norm) < 8:
             continue
         _assert(any(s_norm in _norm(c) for c in chunks), f"content lost: {s_norm[:30]}")
-    return len(chunks)
+    _DETAILS['test_splitter_no_empty_no_overlong_no_loss'] = len(chunks)
 
 
 def test_splitter_overlap_effective():
@@ -149,7 +155,7 @@ def test_splitter_overlap_effective():
             overlapped = True
             break
     _assert(overlapped, "overlap did not take effect between adjacent chunks")
-    return len(chunks)
+    _DETAILS['test_splitter_overlap_effective'] = len(chunks)
 
 
 def test_splitter_rejects_invalid_overlap():
@@ -193,7 +199,8 @@ def test_identify_duplicate_chunks_text_fallback():
     _assert(sys_chunks[0]["text"] == "完整上下文",
             f"system op chunk text changed: {sys_chunks[0]['text']!r}")
 
-    return {"custom_texts": sorted(custom_texts), "system_text": sys_chunks[0]["text"]}
+    _DETAILS['test_identify_duplicate_chunks_text_fallback'] = {
+        "custom_texts": sorted(custom_texts), "system_text": sys_chunks[0]["text"]}
 
 
 # --------------------------------------------------------------------------
@@ -237,7 +244,7 @@ def test_pipeline_reconstruct_no_duplicate():
         _assert("这是第二句" in text and "这是第三句" in text, "content lost after dedup")
     finally:
         shutil.rmtree(sample_dir, ignore_errors=True)
-    return text.count("这是第一句")
+    _DETAILS['test_pipeline_reconstruct_no_duplicate'] = text.count("这是第一句")
 
 
 def test_pipeline_md_txt_docx_pdf():
@@ -279,7 +286,7 @@ def test_pipeline_md_txt_docx_pdf():
     finally:
         shutil.rmtree(sample_dir, ignore_errors=True)
 
-    return results
+    _DETAILS['test_pipeline_md_txt_docx_pdf'] = results
 
 
 # --------------------------------------------------------------------------
@@ -359,7 +366,7 @@ def test_pipeline_headingless_documents():
     finally:
         shutil.rmtree(sample_dir, ignore_errors=True)
 
-    return results
+    _DETAILS['test_pipeline_headingless_documents'] = results
 
 
 def test_pipeline_table_rows_keep_all_columns():
@@ -382,7 +389,7 @@ def test_pipeline_table_rows_keep_all_columns():
     finally:
         shutil.rmtree(sample_dir, ignore_errors=True)
 
-    return results
+    _DETAILS['test_pipeline_table_rows_keep_all_columns'] = results
 
 
 # --------------------------------------------------------------------------
@@ -422,7 +429,7 @@ def test_pipeline_english_txt_and_validator_scope():
         _assert_pipeline_invariants(docs, 512, 128, 'english-txt')
     finally:
         shutil.rmtree(sample_dir, ignore_errors=True)
-    return len(docs)
+    _DETAILS['test_pipeline_english_txt_and_validator_scope'] = len(docs)
 
 
 def test_empty_content_raises_parse_empty_error():
@@ -479,7 +486,7 @@ def test_empty_content_raises_parse_empty_error():
                 raise AssertionError(f"{path}: 旧行为复辟 —— 零文本未抛 ParseEmptyError")
     finally:
         shutil.rmtree(sample_dir, ignore_errors=True)
-    return ','.join(checked)
+    _DETAILS['test_empty_content_raises_parse_empty_error'] = ','.join(checked)
 
 
 def main():
@@ -499,8 +506,8 @@ def main():
     failures = []
     for name, fn in tests:
         try:
-            detail = fn()
-            print(f"PASS  {name}  -> {detail}")
+            fn()
+            print(f"PASS  {name}  -> {_DETAILS.get(name, '')}")
         except Exception as e:
             failures.append((name, e))
             print(f"FAIL  {name}  -> {type(e).__name__}: {e}")

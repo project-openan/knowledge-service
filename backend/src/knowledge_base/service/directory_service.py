@@ -224,7 +224,7 @@ def sort_vos(vos: list[dict]) -> list[dict]:
 
 
 def _validate_title(title: Optional[str]) -> str:
-    """标题校验：``^[\p{IsHan}a-zA-Z0-9_.\- ]{2,30}$`` 且不能全空白。
+    r"""标题校验：``^[\p{IsHan}a-zA-Z0-9_.\- ]{2,30}$`` 且不能全空白。
 
     ⚠️ 抛的是**业务错误（0005）不是校验错误（0004）**：这个校验是手写的，
     抛出的错误统一序列化成 ``0005``（``msgId=RetCode.BusinessError``），

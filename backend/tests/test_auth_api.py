@@ -64,8 +64,8 @@ def test_status_local_returns_authenticated_user(client, monkeypatch):
     monkeypatch.setattr(repo, 'table_exists', lambda: True)
     monkeypatch.setattr(service, 'current_user_or_none', lambda token: USER)
 
-    response = client.get(AUTH_PREFIX + '/status',
-                          cookies={sessions.COOKIE_NAME: 'token'})
+    client.cookies.set(sessions.COOKIE_NAME, 'token')
+    response = client.get(AUTH_PREFIX + '/status')
 
     body = response.json()
     assert body['mode'] == 'local'
@@ -186,8 +186,8 @@ def test_me_requires_a_session(client, monkeypatch):
 def test_me_returns_the_session_user(client, monkeypatch):
     monkeypatch.setattr(service, 'validate_session', lambda token: USER)
 
-    response = client.get(AUTH_PREFIX + '/me',
-                          cookies={sessions.COOKIE_NAME: 'token'})
+    client.cookies.set(sessions.COOKIE_NAME, 'token')
+    response = client.get(AUTH_PREFIX + '/me')
 
     assert response.status_code == 200
     assert response.json()['user']['username'] == 'alice'
@@ -200,10 +200,10 @@ def test_password_change_returns_204(client, monkeypatch):
                         lambda user, current, new, **kwargs: captured.update(
                             user=user.username, current=current, new=new, **kwargs))
 
+    client.cookies.set(sessions.COOKIE_NAME, 'token')
     response = client.post(
         AUTH_PREFIX + '/password',
-        json={'currentPassword': 'old-password', 'newPassword': 'new-password-123'},
-        cookies={sessions.COOKIE_NAME: 'token'})
+        json={'currentPassword': 'old-password', 'newPassword': 'new-password-123'})
 
     assert response.status_code == 204
     assert captured == {'user': 'alice', 'current': 'old-password',
@@ -219,10 +219,10 @@ def test_password_change_maps_policy_error(client, monkeypatch):
 
     monkeypatch.setattr(service, 'change_password', _raise)
 
+    client.cookies.set(sessions.COOKIE_NAME, 'token')
     response = client.post(
         AUTH_PREFIX + '/password',
-        json={'currentPassword': 'old-password', 'newPassword': 'short'},
-        cookies={sessions.COOKIE_NAME: 'token'})
+        json={'currentPassword': 'old-password', 'newPassword': 'short'})
 
     assert response.status_code == 422
     assert _auth_error(response)[0] == 'password_policy'

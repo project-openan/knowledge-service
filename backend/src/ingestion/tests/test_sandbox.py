@@ -292,7 +292,6 @@ def test_entry_module_imports_are_guarded():
         _assert(forbidden not in guarded_imports,
                 f"main.py 顶层 import 了 {forbidden!r} —— 必须在 if __name__ == "
                 f"'__main__' 守卫内，否则每个算子子进程都会重导入整个应用")
-    return sorted(guarded_imports)
 
 
 def test_child_environment_is_whitelisted():
