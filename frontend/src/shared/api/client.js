@@ -140,6 +140,9 @@ async function toApiError (errorLike) {
 }
 
 function notifyError (apiError, config) {
+  // 不可达防御分支：唯一调用方 rejectFailure 传入的总是 toApiError 构造出的
+  // ApiError（永不为空）。为免覆盖率门禁误报，忽略这三行。
+  /* v8 ignore next 3 */
   if (!apiError) {
     return
   }
