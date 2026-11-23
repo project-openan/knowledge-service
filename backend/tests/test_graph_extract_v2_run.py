@@ -10,7 +10,6 @@
 
 from __future__ import annotations
 
-import json
 import zipfile
 
 import pytest
@@ -210,7 +209,6 @@ def test_run_cancelled_task(run_env):
 
 
 def test_run_unexpected_error_marks_store_failed(run_env):
-    from graph.service import graph_extract_api
     import graph.service.graph_extract_api as api
 
     original = api.zip_outputs

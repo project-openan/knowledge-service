@@ -264,7 +264,7 @@ def test_delete_folders_reports_rowcount(monkeypatch):
 
 
 def test_titles_by_ids_skips_empty_and_null_titles(monkeypatch):
-    cursor = _patch(monkeypatch, [
+    _patch(monkeypatch, [
         ('rows', ['title'], [('甲',), (None,)]),
     ])
 
@@ -339,7 +339,7 @@ def test_property_readers_need_ids(monkeypatch):
 
 
 def test_get_properties_maps_file_id_to_value(monkeypatch):
-    cursor = _patch(monkeypatch, [
+    _patch(monkeypatch, [
         ('rows', ['file_id', 'prop_value'], [('f1', 'document'), ('f2', 'qa')]),
     ])
 
@@ -347,7 +347,7 @@ def test_get_properties_maps_file_id_to_value(monkeypatch):
 
 
 def test_get_all_properties_groups_by_file_id(monkeypatch):
-    cursor = _patch(monkeypatch, [
+    _patch(monkeypatch, [
         ('rows', ['file_id', 'prop_name', 'prop_value'],
          [('f1', 'KType', 'document'), ('f1', 'file_size', '10')]),
     ])
@@ -426,7 +426,7 @@ def test_search_all_files_by_page_has_no_parent_filter(monkeypatch):
 
 
 def test_count_all_files(monkeypatch):
-    cursor = _patch(monkeypatch, [('scalar', 9)])
+    _patch(monkeypatch, [('scalar', 9)])
 
     assert store.count_all_files('kb', None) == 9
 
@@ -494,7 +494,7 @@ def test_claim_file_for_retry_succeeds_only_when_row_returned(monkeypatch):
 
 
 def test_get_operator_found_and_missing(monkeypatch):
-    cursor = _patch(monkeypatch, [
+    _patch(monkeypatch, [
         ('rows', ['id', 'operator_path'], [(1, '/ops/a.py')]),
         ('rows', ['id'], []),
     ])
@@ -504,7 +504,7 @@ def test_get_operator_found_and_missing(monkeypatch):
 
 
 def test_get_operator_props(monkeypatch):
-    cursor = _patch(monkeypatch, [
+    _patch(monkeypatch, [
         ('rows', ['prop_name', 'prop_value'], [('position', '1'), ('operator', 'x')]),
     ])
 
@@ -512,13 +512,13 @@ def test_get_operator_props(monkeypatch):
 
 
 def test_operator_python_path_missing_operator_is_none(monkeypatch):
-    cursor = _patch(monkeypatch, [('rows', ['id'], [])])
+    _patch(monkeypatch, [('rows', ['id'], [])])
 
     assert store.operator_python_path(404) is None
 
 
 def test_operator_authorize_raises_for_missing_operator(monkeypatch):
-    cursor = _patch(monkeypatch, [('rows', ['id'], [])])
+    _patch(monkeypatch, [('rows', ['id'], [])])
 
     with pytest.raises(KbApiError) as caught:
         store.operator_authorize(404)
@@ -527,7 +527,7 @@ def test_operator_authorize_raises_for_missing_operator(monkeypatch):
 
 
 def test_operator_authorize_returns_row(monkeypatch):
-    cursor = _patch(monkeypatch, [('rows', ['id'], [(1,)])])
+    _patch(monkeypatch, [('rows', ['id'], [(1,)])])
 
     assert store.operator_authorize(1) == {'id': 1}
 

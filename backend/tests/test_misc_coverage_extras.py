@@ -15,7 +15,6 @@ from model.models import MODEL_KIND_LLM, MODEL_KIND_EMBEDDING, MODEL_KIND_RERANK
 from model.repository import InMemoryModelStore
 from model import service as model_service_module
 
-from parsing import corpus as parsing_corpus
 from parsing.parsers.md_tool.md_table_tool import MdTableTool
 from parsing.parsers.pdf_tool.read_pdf import PdfContentParser, process_origin_title
 
@@ -205,7 +204,6 @@ def test_probe_embedding_path_not_configured(monkeypatch):
 
 
 def test_test_connection_for_embedding_and_rerank(monkeypatch):
-    from model.service import RERANK_TEST_DOCUMENTS
 
     store = InMemoryModelStore()
     service = _service(store, http_post=lambda url, **k: _JsonResponse(
@@ -236,7 +234,6 @@ def test_test_connection_message_fallbacks():
 
 
 def test_update_clears_key_when_base_url_changes():
-    from model.errors import ModelApiError
 
     store = InMemoryModelStore()
     service = _service(store)
@@ -376,13 +373,6 @@ def test_md_table_tool_title_with_pipe():
 
 
 def test_md_table_tool_column_detection_without_pipe_in_first_row(tmp_path):
-    markdown = (
-        '# 网格\n\n'
-        '第一行不是表格行。\n'
-        '| X | Y |\n'
-        '| --- | --- |\n'
-        '| 值 | 值 |\n'
-    )
     tool = MdTableTool()
     rows = ['', '', '| X | Y |', '| --- | --- |', '| 值 | 值 |']
     assert tool.find_table_col_num(rows) == 2
@@ -535,7 +525,6 @@ def test_vector_store_table_exists(monkeypatch):
     assert vector_store.table_exists('doc_x_vector') is True
     conn.fetchone = (0,)
     assert vector_store.table_exists('doc_x_vector') is False
-    from infrastructure.db.identifiers import validate_identifier
     with pytest.raises(Exception):
         vector_store.table_exists('bad name; drop')
 

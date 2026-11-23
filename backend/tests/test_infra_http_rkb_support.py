@@ -17,7 +17,6 @@ from infrastructure.http.middleware.request_id import RequestIdMiddleware
 from infrastructure.logging import trace
 from shared.errors.api import (KbApiError, KbMalformedRequestError,
                                KbStoreError, KbValidationError)
-from shared.errors.exception import EMException
 
 
 # ---------------------------------------------------------------------------
@@ -161,7 +160,7 @@ async def _kb_error_handler_reraises():
 
 def test_dispatch_sync_ok_status_variants():
     request = _request_for_path()
-    download = rkb_support.dispatch_sync(
+    rkb_support.dispatch_sync(
         request, b'', lambda payload: None, ok_status=200,
         location=lambda result: '/x') if False else None
     from fastapi.responses import JSONResponse
@@ -282,7 +281,7 @@ async def _multipart_gates():
 # ---------------------------------------------------------------------------
 
 def test_kb_responses_store_error_mapping():
-    request = _request_for_path()
+    _request_for_path()
 
     class StoreError(KbStoreError):
         def __init__(self, kind):
@@ -487,7 +486,6 @@ def test_rate_limit_blocks_after_window_limit():
 
 
 def test_rate_limit_without_client_ip_skips_limiting():
-    import asyncio
 
     middleware = RateLimitMiddleware(lambda *a: None, limits={'/graph': {'limit': 1,
                                                                         'window': 1}})

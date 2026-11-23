@@ -17,7 +17,6 @@ zip 的上限是**防御纵深**（真正的隔离在部署层），用例要在
     python -m pytest tests/test_operator_sandbox_zip_guard.py -q
 """
 
-import io
 import zipfile
 
 import pytest

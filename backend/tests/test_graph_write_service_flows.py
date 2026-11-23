@@ -16,7 +16,6 @@ from __future__ import annotations
 import pytest
 
 from graph.service import graph_write_service as svc
-from graph.models.kg_struct import EdgeData, EntityData
 from shared.errors.api import KbApiError
 
 SCHEMA = {
@@ -380,7 +379,6 @@ def test_create_entity_edge_write_failure_rolls_back(monkeypatch, graph_env):
 
 
 def test_prepare_edge_for_entity_validations(graph_env):
-    from graph.repository import graph_pg
     client = {'dbname': 'graph_demo'}
     with pytest.raises(KbApiError) as caught:
         svc._prepare_edge_for_entity(client, SCHEMA, 'Person_1', {'edgeType': 'Ghost'})
@@ -416,7 +414,6 @@ def test_prepare_edge_for_entity_validations(graph_env):
 
 
 def test_validate_edge_node_types_matrix(graph_env):
-    from graph.repository import graph_pg
     with pytest.raises(KbApiError) as caught:
         svc._validate_edge_node_types(SCHEMA, 'Ghost', 'Person_1', 'Company_1')
     assert 'edge.type.not.defined' in caught.value.key

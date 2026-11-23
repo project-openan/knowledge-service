@@ -7,7 +7,6 @@ from __future__ import annotations
 
 from contextlib import contextmanager
 
-import pytest
 
 from infrastructure.tasks import pg_queue
 
@@ -103,7 +102,6 @@ def test_listen_connection_uses_autocommit_and_listens_both_channels(monkeypatch
 
     class FakePsycopg2Conn:
         def cursor(self):
-            guard = self
 
             class _Cursor:
                 def __enter__(self):
@@ -134,7 +132,7 @@ def test_listen_connection_uses_autocommit_and_listens_both_channels(monkeypatch
                                  'password': 'p'})
     monkeypatch.setattr('infrastructure.db.kb.get_kbase_db_name', lambda: 'kbase')
 
-    conn = pg_queue.listen_connection()
+    pg_queue.listen_connection()
 
     assert created['database'] == 'explicit_db'          # 显式库名优先
     assert created['connect_timeout'] == 2

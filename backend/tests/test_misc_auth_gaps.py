@@ -13,7 +13,7 @@ from auth import service
 from auth import sessions
 from auth import passwords
 from auth import cli as auth_cli
-from auth.errors import AuthError, AuthStoreUnavailable, user_not_found
+from auth.errors import AuthError, AuthStoreUnavailable
 from auth.middleware import AuthMiddleware, _plain_unauthorized, _route_path
 from auth.models import AuthUser
 
@@ -358,7 +358,6 @@ def test_user_admin_operations(monkeypatch):
 
 
 def test_create_user_rejects_bad_role_and_weak_bootstrap_password(monkeypatch):
-    from auth.errors import password_policy
     with pytest.raises(AuthError):
         service.create_user('user1', 'Strong-password-1', role='root')
     with pytest.raises(AuthError):

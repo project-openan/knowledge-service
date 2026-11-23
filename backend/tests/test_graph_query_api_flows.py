@@ -167,7 +167,6 @@ def test_query_subgraph_with_filters_collects_path_fields(query_env):
         return ([], [])
 
     from graph.repository import graph_pg
-    import graph.service.graph_query_api as api_module
 
     original = graph_pg.subgraph
     graph_pg.subgraph = fake_subgraph

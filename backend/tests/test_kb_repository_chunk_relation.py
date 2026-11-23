@@ -124,7 +124,7 @@ def test_index_select_sql_prefixes_expanded_columns():
 
 
 def test_query_by_node_id_returns_first_row_with_metadata(monkeypatch):
-    cursor = _patch(monkeypatch, [
+    _patch(monkeypatch, [
         ('rows', ['id', 'text', 'node_id', 'source', 'content_expand', 'chunk_id', 'type'],
          [(7, '正文', 'node-1', 'a.md', 'chunk-1', 0, 1)]),
         ('rows', ['id', 'text', 'node_id', 'source', 'content_expand', 'chunk_id', 'type'],
@@ -272,7 +272,7 @@ def test_count_by_files_empty_is_noop(monkeypatch):
 
 
 def test_count_by_files_groups_by_directory(monkeypatch):
-    cursor = _patch(monkeypatch, [('rows', ['directory_id', 'count'], [('f1', 4)])])
+    _patch(monkeypatch, [('rows', ['directory_id', 'count'], [('f1', 4)])])
 
     assert chunk_store.count_by_files(KB_DOC, ['f1']) == {'f1': 4}
 
@@ -363,7 +363,7 @@ def test_insert_chunk_uses_on_conflict_do_nothing(monkeypatch):
 
 
 def test_select_relation_by_id(monkeypatch):
-    cursor = _patch(monkeypatch, [
+    _patch(monkeypatch, [
         ('rows', ['id', 'kbase_id', 'directory_id', 'node_id'],
          [(11, 'kb', 'f1', 'node-1')]),
         ('rows', ['id'], []),

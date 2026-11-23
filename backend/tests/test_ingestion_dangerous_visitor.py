@@ -10,7 +10,6 @@ import ast
 
 import pytest
 
-from ingestion.service.operator import dangerous_function_visitor as dfv
 from ingestion.service.operator.dangerous_function_visitor import (
     DangerousCodeVisitor,
     _build_scope_info,

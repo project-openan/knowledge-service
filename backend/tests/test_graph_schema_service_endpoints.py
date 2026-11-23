@@ -200,7 +200,7 @@ def test_import_schema_generates_id_when_blank(schema_store):
     doc = _import_doc()
     doc['schema_id'] = '  '
     content = _zip_bytes({'x.json': json.dumps(doc, ensure_ascii=False).encode()})
-    result = svc.import_schema('b.zip', content, 'emp-1', None)
+    svc.import_schema('b.zip', content, 'emp-1', None)
     assert schema_store['inserted'][0]['schema_id'] not in ('', '  ', None)
 
 

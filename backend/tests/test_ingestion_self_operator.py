@@ -608,7 +608,6 @@ def test_sandbox_child_memory_headroom(tmp_path):
 
 def test_sandbox_result_file_removal_failure_is_tolerated(tmp_path, monkeypatch):
     script = _write_script(tmp_path, 'ok.py', "def file_split(file_path):\n    return 'x'\n")
-    import logging as _logging
 
     def boom(path, *args, **kwargs):
         raise OSError('device busy')

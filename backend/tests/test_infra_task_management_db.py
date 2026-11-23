@@ -173,7 +173,7 @@ def test_list_tasks_rejects_unknown_status(monkeypatch):
 
 
 def test_list_task_groups_aggregates_by_kbase(monkeypatch):
-    group_row = {'kbase_id': 'kb1', 'kbase_name': 'Demo', 'total': 2,
+    {'kbase_id': 'kb1', 'kbase_name': 'Demo', 'total': 2,
                  'latest_created_at': datetime(2026, 1, 2, 3, 4),
                  'pending': 2, 'running': 0}
     _GROUP_COLUMNS = [('kbase_id',), ('kbase_name',), ('total',),

@@ -4,10 +4,7 @@
 work_dir 打到 ``tmp_path``，零外部依赖。
 """
 
-import gzip
 import json
-import os
-import struct
 
 import docx as python_docx
 import openpyxl
@@ -15,7 +12,7 @@ import pytest
 from pptx import Presentation
 from pptx.chart.data import CategoryChartData
 from pptx.enum.chart import XL_CHART_TYPE
-from pptx.util import Emu, Pt
+from pptx.util import Emu
 
 from infrastructure.config import settings as infra_settings
 from parsing.common import create_doc
@@ -318,7 +315,7 @@ def test_textpage_lines_splits_by_charboxes(tmp_path):
 
 
 def test_parser_pdf_to_md_writes_markdown(tmp_path):
-    path = _build_pdf(tmp_path / 'report.pdf', [
+    _build_pdf(tmp_path / 'report.pdf', [
         [(72, 700, 14, 'Report title line'), (72, 650, 10, 'Some body content here.')],
     ], outlines=[(0, 'Report title line', 0)])
     parser = PdfContentParser()
@@ -337,7 +334,7 @@ def _make_pptx(path, with_chart_type=None, group=False, table=False):
     slide = prs.slides.add_slide(layout)
     left_box = slide.shapes.add_textbox(Emu(100000), Emu(100000), Emu(3000000), Emu(600000))
     left_box.text_frame.text = 'Slide Title'
-    para = left_box.text_frame.paragraphs[0]
+    left_box.text_frame.paragraphs[0]
     sub = left_box.text_frame.add_paragraph()
     sub.text = 'Indented item'
     sub.level = 1
@@ -368,7 +365,7 @@ def _make_pptx(path, with_chart_type=None, group=False, table=False):
 
 
 def test_pptx_to_markdown_full(tmp_path):
-    path = _make_pptx(tmp_path / 'deck.pptx', group=True, table=True)
+    _make_pptx(tmp_path / 'deck.pptx', group=True, table=True)
     parser = PPTXContentParser()
     output = parser.convert_pptx(str(tmp_path), 'deck.pptx')
     markdown = open(output, encoding='utf-8').read()
@@ -380,7 +377,7 @@ def test_pptx_to_markdown_full(tmp_path):
 
 
 def test_pptx_chart_supported_type(tmp_path):
-    path = _make_pptx(tmp_path / 'chart.pptx', with_chart_type=XL_CHART_TYPE.COLUMN_CLUSTERED)
+    _make_pptx(tmp_path / 'chart.pptx', with_chart_type=XL_CHART_TYPE.COLUMN_CLUSTERED)
     parser = PPTXContentParser()
     output = parser.convert_pptx(str(tmp_path), 'chart.pptx')
     markdown = open(output, encoding='utf-8').read()
@@ -388,7 +385,7 @@ def test_pptx_chart_supported_type(tmp_path):
 
 
 def test_pptx_chart_unsupported_type_falls_back_to_xml(tmp_path):
-    path = _make_pptx(tmp_path / 'bar.pptx', with_chart_type=XL_CHART_TYPE.BAR_CLUSTERED)
+    _make_pptx(tmp_path / 'bar.pptx', with_chart_type=XL_CHART_TYPE.BAR_CLUSTERED)
     parser = PPTXContentParser()
     output = parser.convert_pptx(str(tmp_path), 'bar.pptx')
     markdown = open(output, encoding='utf-8').read()

@@ -129,7 +129,6 @@ def test_normalized_operator_id(value, expected):
 
 
 def test_normalized_operator_id_rejects_non_numeric_strings():
-    from shared.errors.api import KbValidationError
 
     with pytest.raises(Exception):
         _normalized_operator_id('abc')
@@ -244,7 +243,7 @@ def test_split_handler_negative_or_missing_operator_gets_defaults(env):
 
         call = env['calls'][0]
         assert call[1] in (-1, None)
-        injected = handle.get('_injected') or True
+        handle.get('_injected') or True
         assert handle['splitResult'] == {'results': [], 'chunks': []}
 
     # 注入参数落到 text_split 的 args（None / '' 走同一支）
@@ -359,7 +358,6 @@ def test_embedding_handler_failure_marks_failed(env, monkeypatch):
 
 
 def test_embedding_handler_rollback_cleans_three_stores(env, monkeypatch):
-    import knowledge_base.repository.chunk as chunk_store
     import knowledge_base.repository.node_relation as relation_store
 
     def broken_relation(pk_id, ids):

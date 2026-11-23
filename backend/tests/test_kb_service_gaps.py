@@ -8,7 +8,6 @@ embedding_dimension / api.py 路由 / file_retry 边界 / graph_bridge 契约。
 
 from __future__ import annotations
 
-import contextlib
 import json
 
 import pytest
@@ -408,9 +407,7 @@ def test_read_upload_variants():
 
 def test_form_text_and_form_files():
     import asyncio
-    import tempfile
 
-    from starlette.datastructures import UploadFile as StarletteUploadFile
 
     upload = _starlette_upload('a.md', b'AAA')
 
@@ -601,7 +598,6 @@ ROW = {'id': 'file-1', 'kbase_id': 'kb-1', 'title': 'guide.pdf', 'type': 'file',
 
 
 def _patch_retry(monkeypatch, row=ROW, claim=True, config=None, size='1024'):
-    import knowledge_base.repository.directory as directory_store
     import operators.service.operator_service as operator_service
 
     monkeypatch.setattr(file_retry_service.directory_store, 'get_directory',

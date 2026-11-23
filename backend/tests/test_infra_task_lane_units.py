@@ -167,7 +167,7 @@ def test_durable_lane_shutdown_drains_running_task():
 
     lane.start(claim, execute)
     assert started.wait(3.0)
-    deadline = time.monotonic() + 0.05                 # 与 drain 循环并发起跑
+    time.monotonic() + 0.05                 # 与 drain 循环并发起跑
     lane.shutdown(drain_seconds=3.0)                   # 等 running 归零再关停
     assert lane.running == 0
     assert lane._threads == []

@@ -3,7 +3,6 @@
 不连真实 DB / 网络：repository 与 transport 全部打桩。
 """
 
-import queue
 
 import pytest
 

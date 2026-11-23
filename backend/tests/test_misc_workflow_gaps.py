@@ -196,7 +196,7 @@ def test_pg_store_workflow_crud_with_stubbed_conn(monkeypatch):
 
 
 def test_pg_store_draft_and_published_paths(monkeypatch):
-    from workflow.repository_pg import _to_draft, _to_published
+    from workflow.repository_pg import _to_published
 
     store, conn = _pg_store(monkeypatch)
     conn.fetchone_queue = [('wf1', 2, None, None, None, 'admin',

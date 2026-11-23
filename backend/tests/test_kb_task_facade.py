@@ -676,7 +676,6 @@ def test_process_file_empty_handle_is_noop(monkeypatch):
 
 def test_process_file_success_marks_status_one(monkeypatch):
     import knowledge_base.repository.directory as directory_store
-    from knowledge_base.task import handlers as handlers_module
 
     calls = []
 

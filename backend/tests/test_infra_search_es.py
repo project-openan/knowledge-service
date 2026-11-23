@@ -8,7 +8,6 @@ import pytest
 import requests
 
 from infrastructure.search import elasticsearch as es_module
-from infrastructure.search import es_restful
 from infrastructure.search.es_restful import (
     CatNamespace,
     ESRestfulClient,

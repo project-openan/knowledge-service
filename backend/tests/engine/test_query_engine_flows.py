@@ -28,7 +28,7 @@ from engine.primitives.components.query_engine import (
     TransformQueryEngine,
     combine_responses,
 )
-from engine.primitives.interfaces import RagNodePostprocessor, RagRetriever, RagSynthesizer
+from engine.primitives.interfaces import RagNodePostprocessor, RagSynthesizer
 from engine.primitives.models import (
     QueryBundle,
     QueryEngineTool,

@@ -52,7 +52,7 @@ def _valid_zip():
 def import_env(monkeypatch, tmp_path):
     import knowledge_base.name_lock as name_lock
     import knowledge_base.service.kbase_service as kbase_store
-    from knowledge_base.service import embedding_dimension, kbase_v2_service
+    from knowledge_base.service import kbase_v2_service
     from graph import task_runtime
     from graph.repository import graph_import_store
     from infrastructure.storage import kb_storage as storage
@@ -161,7 +161,6 @@ def test_missing_or_illegal_desc(import_env):
 
 
 def test_name_and_desc_validators_become_0005(import_env, monkeypatch):
-    from knowledge_base.service.kbase_write_service import _validate_name
 
     def boom(name):
         raise KbApiError('kbase.name.validation', code='0004')

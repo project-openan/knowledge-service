@@ -9,7 +9,7 @@ import os
 
 import pytest
 
-from ingestion.split import node_transfer, result_convert, system_split_manager
+from ingestion.split import system_split_manager
 from ingestion.split.node_transfer import (
     LCDocument,
     _safe_int,

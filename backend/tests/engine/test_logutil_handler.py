@@ -16,7 +16,6 @@ import os
 import re
 import time
 
-import pytest
 
 from engine import path_utils
 from engine import logutil

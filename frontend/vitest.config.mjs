@@ -37,11 +37,15 @@ export default defineConfig({
     include: ['tests/unit/**/*.spec.js'],
     coverage: {
       provider: 'v8',
-      // 统计口径：src 下全部源码（含 engine 对应的前端运行时组件）；静态资源无 JS 不计入
+      // 统计口径：src 下全部源码；静态资源无 JS 不计入
       include: ['src/**/*.{vue,js,ts}'],
       exclude: ['src/assets/**'],
-      reporter: ['text', 'text-summary']
-      // 覆盖率门禁（thresholds）在本 PR 测试补齐后启用，见 PR 描述
+      reporter: ['text', 'text-summary'],
+      // 覆盖率门禁：行覆盖 ≥95%（与后端 pyproject 的 fail_under=95 同一口径）。
+      // 提例外必须用 v8 ignore 注释并说明不可达理由，不允许「为达标而标」。
+      thresholds: {
+        lines: 95
+      }
     },
     // `src/shared/lib/nameValidator.test.js` 是历史遗留的 `console.log` 冒烟脚本（0 断言），
     // 已按原意改写为 `tests/unit/nameValidator.spec.js`；这里显式排除旧路径，

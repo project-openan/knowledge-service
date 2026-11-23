@@ -96,7 +96,7 @@ def test_new_kbase_id_candidate_is_16_hex():
 
 
 def test_generate_kbase_id_returns_first_free_candidate(monkeypatch):
-    cursor = _patch(monkeypatch, [('rows', ['?'], []), ('rows', ['?'], [])])
+    _patch(monkeypatch, [('rows', ['?'], []), ('rows', ['?'], [])])
 
     first = store.generate_kbase_id()
     second = store.generate_kbase_id()
@@ -130,7 +130,7 @@ def test_select_all_kbases_optionally_scopes_by_org(monkeypatch):
 
 
 def test_select_kbase_by_id_found_and_missing(monkeypatch):
-    cursor = _patch(monkeypatch, [
+    _patch(monkeypatch, [
         ('rows', ['kbase_id'], [('kb-1',)]),
         ('rows', ['kbase_id'], []),
     ])
@@ -155,7 +155,7 @@ def test_count_files_by_kbase_ids_empty_map_without_ids(monkeypatch):
 
 
 def test_count_files_by_kbase_ids_groups(monkeypatch):
-    cursor = _patch(monkeypatch, [('rows', ['kbase_id', 'count'], [('kb', 3)])])
+    _patch(monkeypatch, [('rows', ['kbase_id', 'count'], [('kb', 3)])])
 
     assert store.count_files_by_kbase_ids(['kb']) == {'kb': 3}
 
@@ -225,7 +225,7 @@ def test_search_kbases_appends_limit_and_offset(monkeypatch):
 
 
 def test_count_search_kbases(monkeypatch):
-    cursor = _patch(monkeypatch, [('scalar', 2)])
+    _patch(monkeypatch, [('scalar', 2)])
 
     assert store.count_search_kbases('kw', None, None, None) == 2
 

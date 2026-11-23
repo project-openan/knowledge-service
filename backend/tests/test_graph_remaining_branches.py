@@ -16,7 +16,7 @@ import pytest
 from fastapi import FastAPI, Request
 from fastapi.testclient import TestClient
 
-from shared.errors.api import KbApiError, KbStoreError
+from shared.errors.api import KbApiError
 
 
 # ----------------------------------------------------------------------
@@ -518,7 +518,6 @@ def test_ensure_vector_table_skips_hnsw_for_huge_dimension(monkeypatch):
     from graph.repository import graph_index_store as store
     from infrastructure.db import ddl
 
-    captured = {}
 
     class _Cursor:
         executed = []

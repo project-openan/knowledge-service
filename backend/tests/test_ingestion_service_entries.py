@@ -638,7 +638,7 @@ def test_runtime_large_file_goes_through_lock(monkeypatch):
 
 
 def test_runtime_large_file_reraises_real_error(monkeypatch):
-    calls = _patch_entries(monkeypatch)
+    _patch_entries(monkeypatch)
 
     def boom(_info):
         raise ValueError('RetCode.operator.split.empty')

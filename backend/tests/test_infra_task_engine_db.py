@@ -533,7 +533,7 @@ def test_stats_db_mode_reads_pg_counts(fake_pg):
 def test_stats_memory_mode_counts_delayed_and_requeue(fake_pg):
     engine = TaskEngine()
     store = RecordingStore()
-    release = threading.Event()
+    threading.Event()
 
     def runner(record, ctx):
         raise RuntimeError('retry me')

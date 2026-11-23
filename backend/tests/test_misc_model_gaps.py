@@ -3,7 +3,6 @@
 零真实网络：egress.post / llm_proxy_client / repository_pg._connect 全部打桩。
 """
 
-import json
 
 import pytest
 from fastapi import FastAPI
@@ -16,8 +15,7 @@ from model import operator_client
 from model import probe as model_probe
 from model import seed as model_seed
 from model import router as model_router
-from model import repository as model_repository
-from model.models import MODEL_KIND_LLM, MODEL_KIND_EMBEDDING, ModelRecord, new_model_id
+from model.models import MODEL_KIND_LLM, ModelRecord, new_model_id
 from model.repository import InMemoryModelStore
 from model.router import MODEL_PREFIX, register_model_api
 from model.service import ModelService
@@ -600,7 +598,7 @@ def _service():
 def test_router_dispatch_sync_error_branches():
     from model.errors import ModelApiError
 
-    service = _service()
+    _service()
     request = _FakeRequest({'page': 'abc'})
     assert model_router._query_int(request, 'page', 5) == 5
     assert model_router._query_int(request, 'page', 3) == 3
@@ -674,7 +672,8 @@ def test_router_register_and_lifecycle_routes(monkeypatch):
     app = FastAPI()
     register_model_api(app, service=service)
     client = TestClient(app)
-    url = lambda path: f'{MODEL_PREFIX}{path}'
+    def url(path):
+        return f'{MODEL_PREFIX}{path}'
 
     body = {'modelKind': 'llm', 'modelName': 'seed-check', 'baseUrl': 'http://10.0.0.1:4000/v1',
             'apiKey': 'sk-abcdefghijklmnop'}

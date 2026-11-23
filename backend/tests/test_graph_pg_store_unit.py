@@ -325,7 +325,7 @@ def test_list_all_vertices_paginates_until_short_page(kb):
         rows = original_fetchall()
         seen.append(len(rows))
         if len(seen) == 1:
-            cursor._results = [(f'P9', 'Person', {}, 9)]  # 短页
+            cursor._results = [('P9', 'Person', {}, 9)]  # 短页
         return rows
 
     cursor.fetchall = fetchall

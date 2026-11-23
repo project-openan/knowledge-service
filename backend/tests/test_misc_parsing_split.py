@@ -322,7 +322,7 @@ def test_load_corpus_file_txt_roundtrip(tmp_path):
 def test_load_corpus_file_single_file_and_cleanup(tmp_path, monkeypatch):
     src = tmp_path / 'doc.md'
     src.write_text('# 标题\n\n正文第一句。第二句在这里。\n', encoding='utf-8')
-    out = corpus.load_corpus_file(str(src), str(tmp_path / 'out'), 512, 0)
+    corpus.load_corpus_file(str(src), str(tmp_path / 'out'), 512, 0)
     assert (tmp_path / 'out' / 'output' / 'corpus_file.txt').exists()
 
     # 二次写入会先清掉旧文件（幂等）
@@ -354,7 +354,7 @@ def test_file_split_common_reads_back_and_filters(tmp_path):
 def test_file_split_common_skips_bad_lines(tmp_path, monkeypatch, caplog):
     from parsing.common.create_doc import LCDocument
 
-    docs = [LCDocument('好的切片', {'source': 'a.txt', 'content_expand': '好的切片',
+    [LCDocument('好的切片', {'source': 'a.txt', 'content_expand': '好的切片',
                                    'chunk_id': 1, 'type': 0})]
     # load_corpus_file 桩：返回值就是 file_split_common 里读 corpus_file.txt 的目录
     import os

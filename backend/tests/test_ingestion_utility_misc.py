@@ -4,14 +4,12 @@
 ``parse_config`` 读包内自带的 ``config_dev.yaml``。
 """
 
-import configparser
 import logging
 import os
 
 import pytest
 
 from ingestion.config import loglevel
-from ingestion.utility import config as ingestion_config
 from ingestion.utility import utils as utils_module
 from ingestion.utility import local_disk as local_disk_module
 from ingestion.utility import manager as manager_module

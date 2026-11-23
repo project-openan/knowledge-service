@@ -7,7 +7,6 @@ import logging
 import os
 import time
 
-import pytest
 
 from infrastructure.config import constants, deployment, settings
 from infrastructure.fs import files, images, pathutil, paths, temp_files
