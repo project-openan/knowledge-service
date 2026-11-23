@@ -5,6 +5,9 @@
 deploy/.env
 frontend/.env.local
 !*.env.example
+!frontend/.env.development
+!frontend/.env.production
+!frontend/.env.test
 !e2e/.env.e2e.example
 
 # --- Python ---
