@@ -1,0 +1,383 @@
+/**
+ * GraphVisualization.vue 的主样式（从 SFC 的 <style> 拆出）。
+ *
+ * 拆分缘由：主文件原先 3245 行里 style 占约 690 行，遮住了 script 的职责边界。
+ * 这里只保留「主组件自身模板」的样式：布局骨架（.graph-visualization）、工具条与
+ * 摘要行（含全屏浮层收紧规则）、画布容器、画布下方图例行、抽屉外壳（:deep(.el-drawer)，
+ * 实体抽屉与拆出的 GraphEdgeDrawers 共用）。
+ *
+ * 以下样式已随各自模板迁到 components/graph-visualization/ 下的子组件：
+ * - .kg-* / .zoom-* / .legend        → GraphCanvasTools.vue
+ * - .action-popover                  → GraphActionPopovers.vue
+ * - .drawer-section / .drawer-footer → GraphEdgeDrawers.vue
+ *
+ * 通过 <style lang="less" scoped src="..."> 引入（同 ChatPage.vue 的 chat.less 先例）：
+ * vue-loader 会给本文件的选择器追加与 SFC 相同的 data-v 作用域属性，样式行为不变。
+ */
+
+.graph-visualization {
+  display: flex;
+  flex-direction: column;
+  // 撑满详情页 tab 内容区；高度由父级 flex 决定，控制面板之外的剩余空间给画布
+  height: 100%;
+  min-height: 0;
+  background: transparent;
+}
+
+/* ── 工具条 + 摘要行一组，全屏时整体收进「查询与操作」浮层 ────────── */
+.graph-controls {
+  display: flex;
+  flex-direction: column;
+  flex: 0 0 auto;
+  min-width: 0;
+}
+
+.graph-visualization.is-fullscreen {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  width: 100%;
+  height: 100dvh;
+  padding: 0;
+  gap: 0;
+  background: var(--rs-canvas-bg, #f8fafd);
+}
+
+.graph-visualization.is-fullscreen .graph-controls {
+  display: none;
+}
+
+.graph-visualization.is-fullscreen .graph-controls.is-overlay {
+  display: flex;
+  position: absolute;
+  top: 56px;
+  right: 18px;
+  z-index: 6;
+  width: min(700px, calc(100% - 36px));
+  max-height: calc(100dvh - 140px);
+  overflow: auto;
+  padding: 12px;
+  --el-component-size: 32px;
+  gap: 8px;
+  border: 1px solid var(--rs-border, #e5ebf4);
+  border-radius: var(--rs-radius, 8px);
+  background: var(--rs-bg-card, #fff);
+  box-shadow: 0 8px 28px #10224918;
+}
+
+/* 浮层内控件收紧并右对齐，刷新反馈不撑开面板。 */
+.graph-controls.is-overlay :deep(.controls-wrapper) {
+  margin-top: 0;
+}
+
+.graph-controls.is-overlay :deep(.controls-row) {
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.graph-controls.is-overlay :deep(.controls-left),
+.graph-controls.is-overlay :deep(.controls-right) {
+  gap: 8px;
+  padding-left: 0;
+  padding-right: 0;
+}
+
+.graph-controls.is-overlay :deep(.control-search) {
+  width: 240px;
+}
+
+.graph-controls.is-overlay :deep(.control-type) {
+  width: 140px;
+}
+
+.graph-controls.is-overlay :deep(.control-button) {
+  height: 32px;
+  padding: 6px 12px;
+  font-size: var(--rs-font-size-secondary, 13px);
+}
+
+.graph-controls.is-overlay :deep(.button-compact),
+.graph-controls.is-overlay :deep(.graph-data-actions .table-refresh-control > .el-button) {
+  height: 32px;
+  padding: 6px 12px;
+  font-size: var(--rs-font-size-secondary, 13px);
+}
+
+.graph-controls.is-overlay :deep(.el-checkbox) {
+  height: 32px;
+  margin-right: 0;
+}
+
+.graph-controls.is-overlay .graph-display-summary {
+  height: auto;
+  margin: 8px 0 0;
+  gap: 8px;
+}
+
+.graph-controls.is-overlay .graph-display-meta {
+  gap: 6px 10px;
+}
+
+.graph-controls.is-overlay .graph-display-actions {
+  gap: 8px;
+}
+
+.graph-visualization.is-fullscreen .graph-container {
+  border: 0;
+  border-radius: 0;
+}
+
+.graph-fullscreen-actions {
+  position: absolute;
+  top: 16px;
+  right: 18px;
+  z-index: 7;
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 8px;
+  max-width: calc(100% - 36px);
+}
+
+.graph-fullscreen-actions .el-button {
+  background: var(--rs-bg-card, #fff);
+}
+
+/* 画布右上角有按钮时，左下角提示文字让出宽度。 */
+.graph-container:has(.graph-fullscreen-actions) .graph-canvas-hint {
+  max-width: calc(100% - 170px);
+}
+
+.graph-fullscreen-context {
+  position: absolute;
+  top: 22px;
+  left: 18px;
+  z-index: 5;
+  max-width: calc(100% - 300px);
+  overflow: hidden;
+  color: var(--rs-text-3, #8794ae);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  pointer-events: none;
+}
+
+.graph-display-summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 12px;
+  padding: 10px 4px 14px;
+  color: var(--rs-text-2, #536383);
+  font-size: 13px;
+}
+
+.graph-display-summary b {
+  color: var(--rs-text, #0c1538);
+}
+
+.graph-display-meta {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px 14px;
+  min-width: 0;
+}
+
+.graph-limit-link {
+  padding: 0;
+}
+
+.graph-limit-notice {
+  flex-basis: 100%;
+  color: var(--rs-text-3, #8794ae);
+}
+
+.graph-display-actions {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 16px;
+}
+
+/* 摘要行右侧的建图操作（添加关系；添加实体仍在工具栏） */
+.graph-create-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: nowrap;
+  padding-left: 14px;
+  border-left: 1px solid var(--rs-border);
+}
+
+@media (max-width: 700px) {
+  .graph-create-actions {
+    padding-left: 0;
+    border-left: 0;
+  }
+}
+
+.graph-legend-row {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 18px;
+  padding: 12px 4px 0;
+  color: var(--rs-text-2, #536383);
+  flex-shrink: 0;
+}
+
+.graph-legend-row span {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+}
+
+.graph-legend-row i {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+}
+
+.vn-select{
+  width: 10vw;
+  min-width: 248px;
+}
+
+.graph-container {
+  position: relative;
+  // 宽度跟随内容区（97.5vw 会忽略左栏和页面内边距 → 横向滚动条）；
+  // 高度由 flex 吃掉控制面板之外的剩余空间（76vh 写死会和面板高度相加超出容器）
+  flex: 1 1 auto;
+  min-height: 0;
+  background-color: var(--rs-canvas-bg, #f8fafd);
+  background-image: radial-gradient(var(--rs-canvas-dot, #dbe3ef) 0.8px, transparent 0.8px);
+  background-size: 20px 20px;
+  width: 100%;
+  border-radius: var(--rs-radius, 8px);
+  border: 1px solid var(--rs-border, #e5ebf4);
+  overflow: hidden;
+
+  .graph-vis-wrapper {
+    width: 100%;
+    height: 100%;
+  }
+
+  :deep(.node) {
+    cursor: pointer;
+    transition: all 0.3s ease;
+
+    circle {
+      transition: all 0.2s ease;
+    }
+
+    text {
+      pointer-events: none;
+      user-select: none;
+    }
+  }
+
+  :deep(.link) {
+    transition: all 0.3s ease;
+  }
+}
+
+:deep(.el-tabs__header) {
+    margin:  0px 0px;
+  }
+
+// 抽屉外壳样式：实体编辑抽屉、新增/关系抽屉与拆出的 GraphEdgeDrawers 共用
+// （子组件的抽屉 DOM 仍渲染在本组件树内，:deep 规则可继续命中）。
+:deep(.el-drawer) {
+  .el-drawer__header {
+    margin-bottom: 16px;
+    padding-bottom: 16px;
+    border-bottom: 1px solid var(--rs-border);
+  }
+
+  .el-drawer__body {
+    padding: 20px;
+  }
+
+  .el-drawer__footer {
+    padding: 16px 20px;
+    border-top: 1px solid var(--rs-border);
+    text-align: right;
+  }
+
+  // 折叠框内容缩进
+  .el-collapse-item__wrap {
+    padding-left: 20px !important;
+  }
+
+  .el-collapse-item__content {
+    padding-left: 20px !important;
+  }
+
+  .vn-drawer__body {
+    color: var(--vn-color-gray-light-9);
+    flex: 1;
+    overflow: auto;
+    /* padding: 16px 16px 24px; */
+  }
+}
+
+/* 工具栏/摘要/画布/图例的纵向节奏：
+   页签内容顶 +16 → 工具栏 40 → +16 → 摘要 32 → +16 → 画布 flex → +16 → 图例 19.2 */
+.graph-display-summary {
+  min-height: 32px;
+  margin: 16px 0;
+  padding: 0;
+  align-items: center;
+}
+
+.graph-legend-row {
+  margin-top: 16px;
+  padding: 0 4px;
+}
+
+.graph-canvas-hint {
+  position: absolute;
+  left: 18px;
+  top: 16px;
+  z-index: 5;
+  padding: 3px 6px;
+  border-radius: 4px;
+  color: var(--rs-text-3, #8794ae);
+  background: color-mix(in srgb, var(--rs-canvas-bg, #f8fafd) 85%, transparent);
+  pointer-events: none;
+}
+
+@media (max-width: 700px) {
+  .graph-container {
+    min-height: 420px;
+  }
+
+  .graph-fullscreen-actions {
+    top: 10px;
+    right: 10px;
+  }
+
+  /* 窄屏内容区被侧栏挤得很窄，提示文字让不出 170px；直接隐藏，避免竖排换行。 */
+  .graph-container:has(.graph-fullscreen-actions) .graph-canvas-hint {
+    display: none;
+  }
+
+  .graph-fullscreen-context {
+    top: 56px;
+    left: 12px;
+    max-width: calc(100% - 24px);
+  }
+
+  .graph-visualization.is-fullscreen .graph-controls.is-overlay {
+    top: 84px;
+    right: 10px;
+    width: calc(100% - 20px);
+  }
+
+  .graph-controls.is-overlay :deep(.control-search) {
+    width: 100%;
+  }
+}
