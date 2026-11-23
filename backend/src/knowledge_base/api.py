@@ -132,8 +132,7 @@ def build_router() -> APIRouter:
     return router
 
 
-def build_content_router(*, enable_ingestion: bool = True,
-                         enable_manual_chunks: bool = True) -> APIRouter:
+def build_content_router() -> APIRouter:
     router = APIRouter()
 
     @router.get('/knowledge-bases/{kbase_id}/directories')
@@ -192,6 +191,7 @@ def build_content_router(*, enable_ingestion: bool = True,
                 kbase_id, keyword, page, size, localize(request)),
         )
 
+    @router.post('/knowledge-bases/{kbase_id}/documents')
     async def upload_document(request: Request, kbase_id: str,
                               files: list[UploadFile] = File(...),
                               metadata: str = Form('')):
@@ -203,6 +203,7 @@ def build_content_router(*, enable_ingestion: bool = True,
             lambda _payload: file_service.upload_files(
                 uploaded, meta, kbase_id, current_user(request)))
 
+    @router.post('/knowledge-bases/{kbase_id}/documents/{document_id}/retry')
     async def retry_document(request: Request, kbase_id: str, document_id: str):
         """重新解析一篇失败文档（异步，202）。只允许 ``status = 2`` 的文档。"""
         return await dispatch(
@@ -268,6 +269,7 @@ def build_content_router(*, enable_ingestion: bool = True,
             request, lambda _payload: chunk_service.get_chunk_list(
                 kbase_id, None, keyword, page, size))
 
+    @router.post('/knowledge-bases/{kbase_id}/chunks')
     async def chunk_add(request: Request, kbase_id: str):
         """手工切片（评测导入链也走这条，见 `tools/rag-metrics/rkb_client.py`）。"""
         return await dispatch(
@@ -275,12 +277,6 @@ def build_content_router(*, enable_ingestion: bool = True,
             lambda payload: add_chunk(kbase_id, payload),
             with_body=True, body_required=True, ok_status=201,
             location=f'{KBASE_PREFIX}/knowledge-bases/{kbase_id}/chunks')
-
-    if enable_ingestion:
-        router.post('/knowledge-bases/{kbase_id}/documents')(upload_document)
-        router.post('/knowledge-bases/{kbase_id}/documents/{document_id}/retry')(retry_document)
-    if enable_manual_chunks:
-        router.post('/knowledge-bases/{kbase_id}/chunks')(chunk_add)
 
     # ------------------------------------------------------------------
     # 算子域

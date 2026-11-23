@@ -367,10 +367,10 @@ MESSAGES = {
         'zh': '切分出的分块数量超过限制，请调整切分参数后重试',
         'en': 'The number of chunks exceeds the limit. Adjust the split settings and retry.',
     },
-    # 手工重试的闸门：只有「解析失败」的文档能重试。
+    # 手工重试的闸门：只有处理失败的文档能重试。
     'file.retry.not.allowed': {
-        'zh': '只有解析失败的文档可以重试',
-        'en': 'Only documents that failed to parse can be retried',
+        'zh': '只有处理失败的文档可以重试',
+        'en': 'Only documents that failed to process can be retried',
     },
     # ⚠️ 这条用于「解析成功但没有文本」，不要复用上面那条 split.error ——
     # 把「文件里没有可提取文本」说成「切分算子有问题」，用户按提示去检查算子会徒劳。
@@ -402,6 +402,10 @@ MESSAGES = {
     'RetCode.file.parse.error': {
         'zh': '文件解析失败',
         'en': 'File parsing failed',
+    },
+    'RetCode.file.embedding.error': {
+        'zh': '文件向量化失败，请检查知识库所用模型后重试',
+        'en': 'Document embedding failed. Check the knowledge base embedding model and retry.',
     },
     'RetCode.database.updateOrInsertException': {
         'zh': '插入或更新数据库异常',
@@ -629,7 +633,7 @@ MESSAGES = {
         'zh': 'position 为空',
         'en': 'position.check.notblank',
     },
-    # ---- 图谱模板域---------------------------------------------
+    # ---- 图谱模板域（B3-a）---------------------------------------------
     'Recode.asset.permission.not.allow': {
         'zh': '当前用户没有操作权限',
         'en': 'The current user does not have operational permissions',
@@ -763,7 +767,7 @@ MESSAGES = {
         'en': 'Knowledge base not exist',
     },
 
-    # ---- 图谱审阅-----------------------------------
+    # ---- 图谱审阅（B3-b 的一部分）-----------------------------------
     # ⚠️ 四条里**三条恒为中文、一条跟随语言**，取决于消息从哪来：
     #
     #   * ``kbId`` / ``depth`` / ``limit`` 的约束直接写在 **DTO 注解**上，
@@ -796,7 +800,7 @@ MESSAGES = {
         'zh': '返回结果数量必须在1-10000之间',
         'en': '返回结果数量必须在1-10000之间',
     },
-    # ---- 图谱实体/边/查询---------------------------
+    # ---- 图谱实体/边/查询（B3-b 余下部分）---------------------------
     'RetCode.graph.edge.already.exists': {
         'zh': '边已存在：{0}',
         'en': 'Edge already exists: {0}',
@@ -1019,6 +1023,84 @@ MESSAGES = {
     'RetCode.zae.get.workflow.fail': {
         'zh': '获取知识检索列表失败',
         'en': 'Failed to get knowledge retrieval list',
+    },
+    # ------------------------------------------------------------------
+    # Agent Key 管理（UI「远程接入 → 密钥管理」）
+    #
+    # 英文里不要放单引号：``render`` 带参数时会走 MessageFormat 的
+    # 引号规则（见 ``_message_format_quotes``），单引号会被吃掉。
+    # ------------------------------------------------------------------
+    'agent.key.not.found': {
+        'zh': 'API Key 不存在或已被删除',
+        'en': 'API key not found or already deleted',
+    },
+    'agent.key.admin.disabled': {
+        'zh': '密钥管理接口未启用',
+        'en': 'Key management API is disabled',
+    },
+    'agent.key.pepper.missing': {
+        'zh': '未配置 RKB_AGENT_KEY_PEPPER，无法创建 API Key',
+        'en': 'RKB_AGENT_KEY_PEPPER is not configured; API keys cannot be created',
+    },
+    'agent.key.store.unavailable': {
+        'zh': 'API Key 表不可用，请先完成数据库初始化',
+        'en': 'API key table is unavailable; initialize the database first',
+    },
+    'agent.key.create.failed': {
+        'zh': '创建 API Key 失败，请重试',
+        'en': 'Failed to create API key; please retry',
+    },
+    'agent.key.name.required': {
+        'zh': '请填写名称',
+        'en': 'Name is required',
+    },
+    'agent.key.name.too.long': {
+        'zh': '名称不能超过 {0} 个字符',
+        'en': 'Name must be at most {0} characters',
+    },
+    'agent.key.description.invalid': {
+        'zh': '用途说明必须是文本',
+        'en': 'Description must be text',
+    },
+    'agent.key.description.too.long': {
+        'zh': '用途说明不能超过 {0} 个字符',
+        'en': 'Description must be at most {0} characters',
+    },
+    'agent.key.scopes.required': {
+        'zh': '请至少选择一个权限',
+        'en': 'Select at least one scope',
+    },
+    'agent.key.scope.unknown': {
+        'zh': '未知权限：{0}',
+        'en': 'Unknown scope: {0}',
+    },
+    'agent.key.kb_ids.too.many': {
+        'zh': '知识库白名单最多 {0} 项',
+        'en': 'At most {0} knowledge bases are allowed',
+    },
+    'agent.key.kb_ids.invalid': {
+        'zh': '知识库白名单必须是字符串数组',
+        'en': 'Knowledge base whitelist must be an array of strings',
+    },
+    'agent.key.rate_limit.invalid': {
+        'zh': '每分钟请求上限必须在 0 到 {0} 之间',
+        'en': 'Rate limit must be between 0 and {0}',
+    },
+    'agent.key.expires_at.invalid': {
+        'zh': '过期时间无法解析，请使用 YYYY-MM-DD 或 ISO 8601',
+        'en': 'Invalid expiry; use YYYY-MM-DD or ISO 8601',
+    },
+    'agent.key.expires_at.past': {
+        'zh': '过期时间必须晚于当前时间',
+        'en': 'Expiry must be in the future',
+    },
+    'agent.key.no.fields': {
+        'zh': '没有可更新的字段',
+        'en': 'No fields to update',
+    },
+    'agent.key.field.unknown': {
+        'zh': '未知字段：{0}',
+        'en': 'Unknown field: {0}',
     },
 }
 

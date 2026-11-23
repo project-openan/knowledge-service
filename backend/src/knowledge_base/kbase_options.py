@@ -35,7 +35,7 @@ RETRIEVAL_NAME_PREFIX = 'doc_'
 
 
 class KbaseTableOptionProvider:
-    """从 ``openan.kb_kbase`` 直接取画布下拉项（结构上满足 flow_api 的 Protocol）。"""
+    """从 ``rag_studio.kb_kbase`` 直接取画布下拉项（结构上满足 flow_api 的 Protocol）。"""
 
     def list_options(self, embedding_model: Optional[str] = None) -> dict[str, list[dict]]:
         wanted_model = (embedding_model or '').strip()

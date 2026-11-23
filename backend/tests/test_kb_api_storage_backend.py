@@ -187,7 +187,7 @@ def _minio_backend(client=None, **kwargs):
         endpoint='minio:9000',
         access_key='ak',
         secret_key='sk',
-        bucket='openan-kb',
+        bucket='rag-studio-kb',
         client=client or FakeMinio(),
         **kwargs,
     )
@@ -328,7 +328,7 @@ def test_factory_builds_minio_backend_from_env(monkeypatch):
     backend = storage_backend()
 
     assert backend.name == 'minio'
-    assert backend.bucket == 'openan-kb'
+    assert backend.bucket == 'rag-studio-kb'
     assert backend.prefix == ''
 
 

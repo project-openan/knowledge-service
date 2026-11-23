@@ -1,7 +1,7 @@
 """``auth_user`` / ``auth_session`` 的 PostgreSQL 读写。
 
 连接走 ``infrastructure.db.kb.connection()``（与知识库元数据同库，默认
-``openan``）。**延迟 import**：CLI 的 ``--help`` 不该拉起整棵 Web 依赖树。
+``rag_studio``）。**延迟 import**：CLI 的 ``--help`` 不该拉起整棵 Web 依赖树。
 
 异常策略：表不存在（``pgcode == '42P01'``）统一收成 ``AuthStoreUnavailable``，
 由 API 回 503；其余数据库异常原样抛，不静默返回空结果 —— 否则「账号不存在」

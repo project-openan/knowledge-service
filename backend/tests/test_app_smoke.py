@@ -30,15 +30,24 @@ def test_unknown_path_returns_problem_envelope(client):
     assert body['type'].startswith('urn:openan:problem:')
 
 
-def test_excluded_capability_surfaces_are_not_registered(client):
-    """MCP/Agent/chat/model/graph 路由面不得存在于公开装配（合规门禁的行为面）。"""
+def test_studio_routes_match_the_enabled_workspaces():
     from route_helpers import api_routes
 
-    paths = {route.path_format for route in api_routes(app)}
+    routes = [(route.path_format.removeprefix(RKB_PREFIX), route.methods)
+              for route in api_routes(app)]
+    operations = {(method, path) for path, methods in routes for method in methods}
 
-    assert f'{RKB_PREFIX}/query' not in paths
-    assert f'{RKB_PREFIX}/mcp' not in paths
-    assert f'{RKB_PREFIX}/agent-keys' not in paths
-    assert not any(p.startswith(f'{RKB_PREFIX}/agent') for p in paths)
-    assert not any('/models' in p for p in paths if p.startswith(RKB_PREFIX))
-    assert f'{RKB_PREFIX}/retrieval/graph' not in paths
+    assert {
+        ('GET', '/knowledge-bases'),
+        ('POST', '/knowledge-bases/{kbase_id}/documents'),
+        ('GET', '/graph-schemas'),
+        ('POST', '/retrieval'),
+        ('POST', '/retrieval/graph'),
+        ('GET', '/workflows'),
+        ('POST', '/query'),
+        ('GET', '/models'),
+        ('GET', '/operators/available'),
+    } <= operations
+    assert all(not path.startswith(('/agent', '/mcp', '/tasks')) for path, _methods in routes)
+    assert all(method == 'GET' for method, path in operations if path.startswith('/operators'))
+    assert routes[-1][0] == '/{unknown_path}'

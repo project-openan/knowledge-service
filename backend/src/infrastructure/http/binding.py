@@ -116,7 +116,7 @@ EDGE_DELETE_FIELDS = {
     'kbId': STRING, 'edgeId': STRING, 'edgeType': STRING,
 }
 
-# ---- 知识库检索 / 列表---------------------------------
+# ---- 知识库检索 / 列表（B1、B2 的读路径）---------------------------------
 
 # **currentPage / pageSize 都是必填**（且各有上下界），
 # 缺了不是「用默认值」，而是 0004 —— ``pageSize=null`` 回

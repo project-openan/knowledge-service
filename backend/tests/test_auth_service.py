@@ -67,7 +67,7 @@ def test_login_success_issues_a_new_session(monkeypatch, secret_hash):
     row = _row(secret_hash)
     calls = _patch_login_repo(monkeypatch, row)
 
-    result = service.login('Alice', 'secret123', ip='203.0.113.7',
+    result = service.login('Alice', 'secret123', ip='10.0.0.7',
                            user_agent='pytest', now=T0)
 
     assert result.user.username == 'alice'
@@ -76,7 +76,7 @@ def test_login_success_issues_a_new_session(monkeypatch, secret_hash):
     created = calls['sessions'][0]
     assert created['user_id'] == 1
     assert created['token_hash'] == sessions.hash_token(result.token)
-    assert created['ip'] == '203.0.113.7'
+    assert created['ip'] == '10.0.0.7'
     assert created['expires_at'] == result.expires_at
 
 

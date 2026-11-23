@@ -1,6 +1,6 @@
 """为每个请求分配并同名回显 ``X-Request-Id``。
 
-为什么放在最外层：鉴权中间件（401）、限流（429）、404/422
+为什么放在最外层：鉴权中间件（401）、限流（429）、404/422、Agent 子应用与 MCP
 的原始 ASGI 路由都会**绕过业务 handler** 直接出响应。只有把本中间件挂在
 ``app.add_middleware`` 的最后（= 最外层），这些响应才都能带上同一个 id。
 
@@ -34,7 +34,7 @@ class RequestIdMiddleware:
 
         request_id = trace.normalize(Headers(scope=scope).get(trace.REQUEST_ID_HEADER))
         # ``Mount`` 只对 scope 做浅拷贝，``state`` 仍是同一个 dict，下游（含 Agent
-        # 的历史路由面）统一从这里取；``trace_id`` 是内部沿用的键名。
+        # 子应用、MCP 路由）统一从这里取；``trace_id`` 是内部沿用的键名。
         state = scope.setdefault('state', {})
         state['request_id'] = request_id
         state['trace_id'] = request_id

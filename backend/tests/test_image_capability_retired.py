@@ -11,7 +11,6 @@
 不提供数据迁移脚本；存量图片文件保留在库中，但不再接受新上传。
 """
 
-import pytest
 from pathlib import Path
 
 REPO = Path(__file__).resolve().parents[2]
@@ -73,7 +72,6 @@ def test_message_key_removed():
     assert 'RetCode.operator.split.image.no_model' not in MESSAGES
 
 
-@pytest.mark.deferred_module(reason='依赖前端页面')
 def test_frontend_does_not_offer_image_extensions():
     frontend = REPO / 'frontend' / 'src'
     for relative in ('features/knowledge-base/lib/knowledge-files.js',

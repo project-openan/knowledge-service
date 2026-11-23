@@ -3,9 +3,9 @@
 主应用刻意不暴露 `/openapi.json` / `/docs`（见 ``app.py``），但对外仍需要一份
 可交付的 OpenAPI。这里把运行时路由表转成静态契约，并用快照测试钉住：
 
-* 路径 / 方法**全量覆盖**（排除兜底路由）；
+* 路径 / 方法**全量覆盖**（排除兜底路由与协议端点 ``/mcp``）；
 * 所有非 2xx 统一引用 RFC 9457 ``Problem``；
-* 已知的 201/202/204 与下载流按真实行为标注；
+* 已知的 201/202/204、下载流与 `/query` SSE 按真实行为标注；
 * 手工接口定义没有 Pydantic 模型时，补一个宽松的 JSON request body（不假装知道字段）。
 
 生成器：``tools/verify/generate-rkb-openapi.py``。
@@ -16,9 +16,10 @@ from typing import Any
 
 from fastapi.openapi.utils import get_openapi
 
+from auth.sessions import COOKIE_NAME
 from shared.prefixes import RKB_PREFIX
 
-API_VERSION = '2.3.0'
+API_VERSION = '2.4.0'
 _PROBLEM_REF = '#/components/schemas/Problem'
 
 #: 成功状态不是 200 的操作。逐键显式，来源是各 router 的 ``ok_status``。
@@ -46,6 +47,7 @@ _SUCCESS_STATUS: dict[tuple[str, str], int] = {
     ('post', '/workflows/{workflow_id}/publication'): 201,
     ('delete', '/workflows/{workflow_id}/publication'): 204,
     ('post', '/models'): 201,
+    ('post', '/agent-keys'): 201,
     ('post', '/auth/logout'): 204,
     ('post', '/auth/password'): 204,
 }
@@ -394,6 +396,40 @@ _REQUEST_SCHEMAS: dict[str, dict[str, Any]] = {
                                     'description': '必须包含 QUERY_ENGINE 节点'},
         },
     },
+    'AgentKeyCreateRequest': {
+        'type': 'object',
+        'required': ['name', 'scopes'],
+        'properties': {
+            'name': {'type': 'string', 'maxLength': 128},
+            'description': {'type': 'string', 'maxLength': 200},
+            'scopes': {'type': 'array', 'minItems': 1, 'items': {
+                'type': 'string',
+                'enum': ['kb:list', 'kb:search', 'kb:answer', 'workflow:read', 'workflow:run'],
+            }},
+            'kbIds': {'type': 'array', 'items': {'type': 'string'},
+                      'description': '白名单；空数组 = 全部文档库'},
+            'rateLimitPerMin': {'type': 'integer', 'minimum': 0, 'maximum': 100000,
+                                'default': 60, 'description': '0 表示不限'},
+            'expiresAt': {'type': 'string', 'nullable': True,
+                          'description': 'ISO 8601 或 YYYY-MM-DD；null = 永不过期'},
+        },
+    },
+    'AgentKeyUpdateRequest': {
+        'type': 'object',
+        'description': '部分更新；expiresAt 显式 null 表示清空过期时间',
+        'properties': {
+            'name': {'type': 'string', 'maxLength': 128},
+            'description': {'type': 'string', 'maxLength': 200},
+            'scopes': {'type': 'array', 'minItems': 1, 'items': {
+                'type': 'string',
+                'enum': ['kb:list', 'kb:search', 'kb:answer', 'workflow:read', 'workflow:run'],
+            }},
+            'kbIds': {'type': 'array', 'items': {'type': 'string'}},
+            'rateLimitPerMin': {'type': 'integer', 'minimum': 0, 'maximum': 100000},
+            'expiresAt': {'type': 'string', 'nullable': True},
+            'enabled': {'type': 'boolean'},
+        },
+    },
 }
 
 
@@ -440,6 +476,8 @@ _REQUEST_BODIES: dict[tuple[str, str], dict[str, Any]] = {
     ('put', '/workflows/{workflow_id}/flow'): _request_body('WorkflowCanvasRequest'),
     ('post', '/workflows/{workflow_id}/validate'): _request_body('WorkflowCanvasRequest'),
     ('post', '/retrieval'): _request_body('RetrievalRequest'),
+    ('post', '/agent-keys'): _request_body('AgentKeyCreateRequest'),
+    ('patch', '/agent-keys/{key_prefix}'): _request_body('AgentKeyUpdateRequest'),
 }
 
 #: 这些操作不接收请求体（POST 但只是动作）。
@@ -467,10 +505,6 @@ _DOWNLOAD_PATHS = frozenset({
     '/workflows/{workflow_id}/export',
 })
 
-#: Mounted route prefixes to exclude from the OpenAPI schema.
-_EXCLUDED_PATHS = frozenset()
-_EXCLUDED_PREFIXES: tuple[str, ...] = ()
-
 _PROBLEM_SCHEMA = {
     'type': 'object',
     'required': ['type', 'title', 'status', 'detail', 'code'],
@@ -497,11 +531,12 @@ _PROBLEM_SCHEMA = {
 }
 
 _DESCRIPTION = (
-    'OpenAN Knowledge Service 对外 REST API。成功体是纯 JSON（单资源 / 数组 / '
+    'Knowledge Studio 对外 REST API。成功体是纯 JSON（单资源 / 数组 / '
     '{items,total,page,pageSize}）；错误是真实 HTTP 状态码 + RFC 9457 '
     '`application/problem+json`。\n\n'
     '协议端点（不属于本 REST 契约）：`POST /query` 的流式模式是标准 SSE、'
-    '`GET /health` 是纯文本探活端点。'
+    '`GET /health` 是纯文本、`/mcp` 是 MCP Streamable HTTP（见 '
+    '`contracts/openapi/agent-api.yaml` 之外另有 MCP 规范）。'
 )
 
 
@@ -573,7 +608,7 @@ def build_rkb_openapi(app, *, version: str = API_VERSION) -> dict:
         if '{unknown_path:path}' not in getattr(route, 'path', '')
     ]
     schema = get_openapi(
-        title='OpenAN Knowledge Service API',
+        title='Knowledge Studio API',
         version=version,
         description=_DESCRIPTION,
         routes=routes,
@@ -586,8 +621,6 @@ def build_rkb_openapi(app, *, version: str = API_VERSION) -> dict:
     for full_path, path_item in schema.get('paths', {}).items():
         short = _short_path(full_path)
         if not full_path.startswith(RKB_PREFIX):
-            continue
-        if short in _EXCLUDED_PATHS or short.startswith(_EXCLUDED_PREFIXES):
             continue
         operations: dict[str, Any] = {}
         for method, operation in path_item.items():
@@ -633,7 +666,7 @@ def build_rkb_openapi(app, *, version: str = API_VERSION) -> dict:
     components.setdefault('securitySchemes', {})['cookieAuth'] = {
         'type': 'apiKey',
         'in': 'cookie',
-        'name': 'openan_session',
+        'name': COOKIE_NAME,
         'description': '本地账号登录后由服务端下发的 HttpOnly 会话 Cookie。',
     }
     components.setdefault('responses', {})['Problem'] = {

@@ -161,3 +161,29 @@ def text_split(operator_id, args, python_path, file_format, clean_path,
         'fileSize': file_size,
         'kbaseId': kbase_id,
     }), fallback_key='RetCode.operator.split.error')
+
+
+def graph_extract(operator_id, args, python_path, file_format, kb_id,
+                  disk_file_key, regex_list, kwargs) -> dict:
+    """``graphExtract``：调抽图算子，返回 ``bo``（``{code, message}``，``code=='0'`` 才算成功）。
+
+    ⚠️ **``args`` 与 ``kwargs`` 分工不同**（实测，见
+    ``memory/graph-extract-operator-contract.md``）：
+
+    * ``args`` → 经 ``extract_params`` 变成**算子函数的 kwargs**；
+      ``llm`` 必须藏在其中一个 argName 叫 ``kwargs`` 的条目里。
+    * 这个顶层 ``kwargs`` → **只**用于切分参数（``chunkSize``/``overlap`` 等）。
+
+    把 ``chunkSize`` 放进 ``args`` 会让算子报
+    ``graph_extract() got an unexpected keyword argument 'chunkSize'``。
+    """
+    return _invoke(lambda: _runtime().graph_extract({
+        'operatorId': operator_id,
+        'args': args,
+        'pythonPath': python_path,
+        'fileFormat': file_format,
+        'kbId': kb_id,
+        'diskFileKey': disk_file_key,
+        'regexList': regex_list,
+        'kwargs': kwargs,
+    }, LANG_ID), fallback_key='Retcode.graph.import.fail')

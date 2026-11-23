@@ -157,14 +157,10 @@ def test_export_by_id_null_zip_path_is_still_server_error(client, monkeypatch):
 # 算子路径变量：非数字 → 0001（类型不匹配）
 # ----------------------------------------------------------------------
 
-# (method, path)：覆盖八条路径变量为 Long 的路由。
+# 公开的算子查询与导出路由要求数字 ID。
 OPERATOR_PATH_ROUTES = [
     ('get', '/operators/abc'),
-    ('delete', '/operators/abc'),
     ('get', '/operators/abc/export'),
-    ('post', '/operators/abc/publish'),
-    ('delete', '/operators/abc/publish'),
-    ('put', '/operators/abc/visibility'),
 ]
 
 

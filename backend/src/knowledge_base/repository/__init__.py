@@ -1,4 +1,4 @@
-"""kb_api 的存储层：直接读写业务库（默认 ``openan``）。
+"""kb_api 的存储层：直接读写业务库（默认 ``rag_studio``）。
 
 与 ``workflow`` 的分工一致：store 只管 SQL 与行，不做 VO 组装、不装信封。
 连接一律走 ``infrastructure.db.kb.connection()``（带完整事务语义、异常不吞）。

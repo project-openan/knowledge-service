@@ -28,6 +28,9 @@ def main():
                 json={'currentPassword': initial_password, 'newPassword': new_password})
         request(session, 'POST', '/auth/login', 200,
                 json={'username': 'admin', 'password': new_password})
+        request(session, 'GET', '/graph-schemas', 200)
+        request(session, 'GET', '/workflows', 200)
+        request(session, 'GET', '/models', 200)
 
         knowledge_base = request(session, 'POST', '/knowledge-bases', 201,
                                  json={'name': 'Knowledge service smoke test', 'props': {}})

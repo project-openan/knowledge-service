@@ -1,6 +1,7 @@
 """纯 REST 契约的共享错误模型（RFC 9457 ``application/problem+json``）。
 
 ``/api/knowledge-service/v1`` 下由 RKB 自己提供响应的家族
+（kb_api / flow_api / model_api / agent-keys / 图谱检索 / Agent REST / 编排问答）不再返回
 不再返回 ``{code:{code,msg,msgId}, bo, other}`` 这种信封，也不再「业务错误一律 HTTP 200」：
 
 * 成功：资源对象 / 数组 / ``{items,total,page,pageSize}``；
@@ -202,6 +203,7 @@ def _build_key_specs() -> dict[str, ProblemSpec]:
         }),
         (_not_found('published_workflow_not_found'), {'published.not.exist'}),
         (_not_found('template_not_found'), {'template.not.found'}),
+        (_not_found('api_key_not_found'), {'agent.key.not.found'}),
         # ---- 409 ------------------------------------------------------
         (_conflict('knowledge_base_exists'), {'kbase.exist'}),
         (_conflict('directory_exists'), {'directory.already.exist'}),
@@ -235,6 +237,7 @@ def _build_key_specs() -> dict[str, ProblemSpec]:
         (PERMISSION_DENIED, {
             'permission.denied',
             'Recode.asset.permission.not.allow',
+            'agent.key.admin.disabled',
         }),
         # ---- 413 ------------------------------------------------------
         (PAYLOAD_TOO_LARGE, {
@@ -368,6 +371,20 @@ def _build_key_specs() -> dict[str, ProblemSpec]:
             'model.thinking.payload.invalid',
             'model.thinking.preset.required',
             'model.thinking.preset.unknown',
+            # Agent Key 管理
+            'agent.key.name.required',
+            'agent.key.name.too.long',
+            'agent.key.description.invalid',
+            'agent.key.description.too.long',
+            'agent.key.expires_at.invalid',
+            'agent.key.expires_at.past',
+            'agent.key.field.unknown',
+            'agent.key.kb_ids.invalid',
+            'agent.key.kb_ids.too.many',
+            'agent.key.no.fields',
+            'agent.key.rate_limit.invalid',
+            'agent.key.scopes.required',
+            'agent.key.scope.unknown',
         }),
         # ---- 502 / 503 / 500 -----------------------------------------
         (UPSTREAM_UNAVAILABLE, {
@@ -377,6 +394,8 @@ def _build_key_specs() -> dict[str, ProblemSpec]:
         }),
         (SERVICE_UNAVAILABLE, {
             'kbase.name.lock.timeout',
+            'agent.key.pepper.missing',
+            'agent.key.store.unavailable',
         }),
         (INTERNAL_ERROR, {
             'server.error',
@@ -385,6 +404,7 @@ def _build_key_specs() -> dict[str, ProblemSpec]:
             'RetCode.graph.query.database.operation.failed',
             'file.save.error',
             'kbase.delete.fail',
+            'agent.key.create.failed',
         }),
     ]
 
@@ -703,8 +723,9 @@ _NON_PROBLEM_EXACT_PATHS = frozenset({
 def owns_problem_path(path: str) -> bool:
     """这条路径的 4xx/5xx 是否应转成 problem+json。
 
-    排除的是**协议端点**：``/health``（纯文本）。
-    其余 ``/api/knowledge-service/v1`` 端点都用同一套 ``application/problem+json``。
+    健康检查返回纯文本。
+    其余 ``/api/knowledge-service/v1`` 端点（含 ``/query``、
+    ``/retrieval/graph``）都用同一套 ``application/problem+json``。
     """
 
     if path in _NON_PROBLEM_EXACT_PATHS:
