@@ -6,6 +6,8 @@
 三写第一步就 ``UndefinedTable`` —— 这条用例钉住派生规则。
 """
 
+import pytest
+
 from knowledge_base.task import handlers
 
 
@@ -27,3 +29,24 @@ def test_embedding_handler_writes_to_the_derived_chunk_table(monkeypatch):
     })
 
     assert captured['chunk_table'] == 'doc_kb1234_chunk'
+
+
+def test_embedding_handler_records_vectorization_failure(monkeypatch):
+    def reject_batch(*args):
+        raise handlers.model_gateway.EmbeddingError('provider rejected input')
+
+    statuses = []
+    monkeypatch.setattr(handlers, '_kbase_row', lambda _: {
+        'id': 7, 'table_name': 'doc_kb1234_vector'})
+    monkeypatch.setattr(handlers.write_service, 'save_chunks', lambda *args: None)
+    monkeypatch.setattr(handlers, '_embed', reject_batch)
+    monkeypatch.setattr(handlers, '_update_status', lambda *args: statuses.append(args))
+
+    with pytest.raises(handlers.model_gateway.EmbeddingError):
+        handlers.FileEmbeddingHandler().handle({
+            'fileId': 'f1',
+            'kbaseId': 'kb1234',
+            'splitResult': {'chunks': [], 'results': [{'text': 'example'}]},
+        })
+
+    assert statuses == [('f1', handlers.STATUS_FAILURE, 'RetCode.file.embedding.error')]

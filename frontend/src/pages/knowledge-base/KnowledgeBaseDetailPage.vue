@@ -454,7 +454,9 @@ function fileMeta (file) {
   const key = fileStatusOf(file)
   return {
     tone: key === 'available' ? 'success' : key === 'failed' ? 'danger' : 'warning',
-    text: fileStatusLabel(key)
+    text: key === 'failed' && file.failReason === 'RetCode.file.embedding.error'
+      ? $t('modules.studioDialogs.knowledgeDetail.statusEmbeddingFailed')
+      : fileStatusLabel(key)
   }
 }
 

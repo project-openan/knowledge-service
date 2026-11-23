@@ -367,10 +367,10 @@ MESSAGES = {
         'zh': '切分出的分块数量超过限制，请调整切分参数后重试',
         'en': 'The number of chunks exceeds the limit. Adjust the split settings and retry.',
     },
-    # 手工重试的闸门：只有「解析失败」的文档能重试。
+    # 手工重试的闸门：只有处理失败的文档能重试。
     'file.retry.not.allowed': {
-        'zh': '只有解析失败的文档可以重试',
-        'en': 'Only documents that failed to parse can be retried',
+        'zh': '只有处理失败的文档可以重试',
+        'en': 'Only documents that failed to process can be retried',
     },
     # ⚠️ 这条用于「解析成功但没有文本」，不要复用上面那条 split.error ——
     # 把「文件里没有可提取文本」说成「切分算子有问题」，用户按提示去检查算子会徒劳。
@@ -402,6 +402,10 @@ MESSAGES = {
     'RetCode.file.parse.error': {
         'zh': '文件解析失败',
         'en': 'File parsing failed',
+    },
+    'RetCode.file.embedding.error': {
+        'zh': '文件向量化失败，请检查知识库所用模型后重试',
+        'en': 'Document embedding failed. Check the knowledge base embedding model and retry.',
     },
     'RetCode.database.updateOrInsertException': {
         'zh': '插入或更新数据库异常',

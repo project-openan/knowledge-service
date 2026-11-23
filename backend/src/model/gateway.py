@@ -14,7 +14,9 @@ HTTP 行为保持稳定，不要随手改动请求形状。
 from __future__ import annotations
 
 import os
+from collections.abc import Iterator
 from dataclasses import dataclass
+from urllib.parse import urlsplit
 
 from infrastructure.http import egress
 from infrastructure.logging.logutil import log
@@ -22,6 +24,8 @@ from infrastructure.logging.logutil import log
 DEFAULT_MODEL = 'BAAI/bge-base-zh-v1.5'
 DEFAULT_DIMENSION = 768
 TIMEOUT_SECONDS = 60
+BIGMODEL_EMBEDDING_2_BATCH_BUDGET = 8_000
+BIGMODEL_EMBEDDING_2_MAX_BATCH_ITEMS = 64
 
 
 class EmbeddingError(Exception):
@@ -104,33 +108,48 @@ def embed_query(question: str, requested_model: str | None) -> list[float]:
 
 
 def embed_many(texts: list[str], requested_model: str | None) -> list[list[float]]:
-    """**整批**向量化（``doEmbedding(List<String>, model)``）—— **一次 HTTP 请求**。
-
-    ⚠️ 这里必须整批发，别在调用方逐条循环：网关的 embedding 接口接受数组，
-    逐条发是 N 倍请求量 —— 跑一个文件就是几十上百次 HTTP，把远端网关的每次抖动
-    都放大成一次任务失败风险（``FileEmbeddingHandler`` 一失败就回滚整条链）。
-    批量发同时也快得多。
-
-    ⚠️ 排查提示:网关对**本栈没有的模型名**直接回 404（实测 ``bge-base-zh-v1.5``
-    在远端确定性 404、``Qwen3-Embedding-0.6B`` 200）—— 文件任务报 404 时先核对
-    ``kb_kbase.embedding_model`` 那一列，别急着当网关抖动。
-
-    返回值与入参**同序**（按响应里的 ``index`` 排；网关不给 ``index`` 就按响应顺序）。
-    """
+    """按目标端点的限制批量向量化，按输入顺序返回向量。"""
     items = list(texts or [])
     if not items:
         return []
     target = resolve_model(requested_model)
-    expected_dimension = target.dimension
-
-    url = target.url
     headers = {'Content-Type': 'application/json'}
     if target.api_key:
         headers['Authorization'] = f'Bearer {target.api_key}'
 
+    vectors: list[list[float]] = []
+    for batch in _request_batches(items, target):
+        vectors.extend(_embed_batch(batch, target, headers))
+    return vectors
+
+
+def _request_batches(items: list[str], target: EmbeddingTarget) -> Iterator[list[str]]:
+    if (target.api_model.lower() != 'embedding-2'
+            or urlsplit(target.url).hostname != 'open.bigmodel.cn'):
+        yield items
+        return
+
+    # 智谱 Embedding-2 每批限 8K tokens。以 UTF-8 字节数保守估算，另给每条留 1 个
+    # token 的余量。超预算的单条独立发送，保留端点原有的单条处理行为。
+    batch = []
+    size = 0
+    for item in items:
+        item_size = len(item.encode('utf-8', errors='surrogatepass')) + 1
+        if batch and (size + item_size > BIGMODEL_EMBEDDING_2_BATCH_BUDGET
+                      or len(batch) == BIGMODEL_EMBEDDING_2_MAX_BATCH_ITEMS):
+            yield batch
+            batch = []
+            size = 0
+        batch.append(item)
+        size += item_size
+    yield batch
+
+
+def _embed_batch(items: list[str], target: EmbeddingTarget,
+                 headers: dict[str, str]) -> list[list[float]]:
     try:
         response = egress.post(
-            url, json={'input': items, 'model': target.api_model},
+            target.url, json={'input': items, 'model': target.api_model},
             headers=headers, timeout=TIMEOUT_SECONDS,
         )
         response.raise_for_status()
@@ -153,9 +172,9 @@ def embed_many(texts: list[str], requested_model: str | None) -> list[list[float
         embedding = item.get('embedding')
         if not embedding:
             raise EmbeddingError('embedding gateway returned empty data')
-        if len(embedding) != expected_dimension:
+        if len(embedding) != target.dimension:
             raise EmbeddingError(
-                f'embedding dimension mismatch: expected {expected_dimension}, '
+                f'embedding dimension mismatch: expected {target.dimension}, '
                 f'got {len(embedding)}')
         vectors.append(embedding)
     return vectors

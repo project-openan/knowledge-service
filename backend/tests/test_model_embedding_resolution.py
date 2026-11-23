@@ -134,6 +134,45 @@ def test_registry_row_endpoint_actually_used_by_embed_many(monkeypatch):
     assert seen['headers']['Authorization'] == 'Bearer sk-mine'
 
 
+@pytest.mark.parametrize(('url', 'api_model', 'batch_sizes'), [
+    ('https://open.bigmodel.cn/api/paas/v4', 'Embedding-2', [5, 5, 3]),
+    ('https://open.bigmodel.cn/api/paas/v4', 'embedding-3', [13]),
+    ('https://my-embed/v1', 'embedding-2', [13]),
+])
+def test_only_bigmodel_embedding_2_splits_large_requests(
+        monkeypatch, url, api_model, batch_sizes):
+    _use_registry(monkeypatch, [_registry_embedding(
+        api_model=api_model, base_url=url, dimension=1)])
+    texts = [f'{i}:' + '字' * 500 for i in range(13)]
+    batches = []
+
+    class Response:
+        def __init__(self, data):
+            self.data = data
+
+        def raise_for_status(self):
+            pass
+
+        def json(self):
+            return {'data': self.data}
+
+    def fake_post(_url, *, json, headers, timeout):
+        batch = json['input']
+        batches.append(batch)
+        data = [
+            {'index': i, 'embedding': [float(text.split(':')[0])]}
+            for i, text in enumerate(batch)
+        ]
+        return Response(list(reversed(data)))
+
+    monkeypatch.setattr(model_gateway.egress, 'post', fake_post)
+
+    assert model_gateway.embed_many(texts, 'self-hosted-embed') == [
+        [float(i)] for i in range(13)]
+    assert list(map(len, batches)) == batch_sizes
+    assert [text for batch in batches for text in batch] == texts
+
+
 def test_unknown_model_does_not_borrow_another_registry_row(monkeypatch):
     """注册表里有别的 embedding 模型，也不能拿来顶替一个没注册的名字。"""
     _use_registry(monkeypatch, [_registry_embedding()])

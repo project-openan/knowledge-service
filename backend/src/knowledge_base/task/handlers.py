@@ -260,13 +260,8 @@ def _persist_index_nodes(kbase_id: str, file_id: str, pk_id: int, table_name: st
 
 
 def _embed(texts: list[str], model_name: Optional[str]) -> list[list[float]]:
-    """批量向量化：**一次请求发整批**。
-
-    ⚠️ 别改回逐条循环：一个文件会变成几十上百次 HTTP，上游每次抖动都被放大成
-    一次「整条文件链回滚」（``FileEmbeddingHandler`` 失败即 rollback）。
-    维度不符**显式抛错**，不截断。
-    """
-    return model_gateway.embed_many(list(texts), model_name)
+    """向量网关根据模型的请求限制分批并校验维度。"""
+    return model_gateway.embed_many(texts, model_name)
 
 
 def _kbase_row(kbase_id: str) -> dict:
@@ -295,4 +290,6 @@ def _fail_reason(error: Exception) -> str:
         return 'Task cancelled'
     if isinstance(error, KbApiError):
         return error.key
+    if isinstance(error, model_gateway.EmbeddingError):
+        return 'RetCode.file.embedding.error'
     return 'RetCode.database.updateOrInsertException'
