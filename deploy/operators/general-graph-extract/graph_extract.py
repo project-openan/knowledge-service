@@ -12,7 +12,7 @@ from concurrent.futures import ThreadPoolExecutor
 
 #: 抽图 chunk 级并发的默认线程数。LLM 调用是纯 I/O，串行是主要瓶颈；
 #: 可用算子 kwargs.maxWorkers 或环境变量 GRAPH_EXTRACT_MAX_WORKERS 覆盖（界 1..32）。
-DEFAULT_MAX_WORKERS = 8
+DEFAULT_MAX_WORKERS = 4
 
 
 _DATE_MIDNIGHT_RE = re.compile(r"^(\d{4}-\d{2}-\d{2})[T ]00:00:00$")
