@@ -6,7 +6,8 @@
  */
 import { onMounted, ref, watch, type Ref } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { getFlowList } from '@/features/workflow/api/workflow'
+// 跨 feature 一律走 workflow 的公共出口（api/index.js），不深入内部路径
+import { getFlowList } from '@/features/workflow/api'
 import { errText } from '@/features/chat/lib/errors'
 import { readLastWorkflow, writeLastWorkflow } from '@/features/chat/lib/session-storage'
 
