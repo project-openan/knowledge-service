@@ -2,9 +2,10 @@
 from __future__ import annotations
 
 import io
+import time
 
 from fastapi import APIRouter, File, Request, UploadFile
-from fastapi.responses import StreamingResponse
+from fastapi.responses import JSONResponse, StreamingResponse
 from starlette.concurrency import run_in_threadpool
 
 from shared.errors.api import (KbApiError, KbMalformedRequestError,
@@ -19,10 +20,16 @@ from infrastructure.http.rkb_support import (dispatch,
                                               enforce_body_content_type, org_id)
 from knowledge_base.http_support import form_files, form_text
 
+from infrastructure.http import headers as httputil
+from infrastructure.logging import trace
 from infrastructure.logging.logutil import log
+from shared.problem import INTERNAL_ERROR, generic_detail, problem_response
+from graph.models.graph_retrieve_dto import GraphRetrieveDto
 from graph.service import (graph_export_service, graph_extract_v2_api,
                            graph_import_api, graph_query_api,
                            graph_schema_service, graph_write_service)
+from graph.service import graph_retrieve_gateway as gateway
+from graph.service.graph_retrieve_gateway import GraphRetrieveError
 
 
 KBASE_PREFIX = RKB_PREFIX
@@ -255,4 +262,64 @@ def build_router() -> APIRouter:
     async def graph_export(request: Request, kbase_id: str):
         return await graph_download(request, graph_export_service.export_graph,
                                      payload={'kbId': kbase_id})
+
+    # 图谱向量检索（自 app.py 收编）：对外唯一入口 ``<RKB_PREFIX>/retrieval/graph``。
+    # 与上面面向 kb 的 graph 路由同属图域，挂在同一 router 里即天然排在 catch-all
+    # 之前——不再依赖"先于 register_rkb_api 注册"的顺序纪律。
+    router.include_router(build_graph_retrieve_router())
     return router
+
+
+def build_graph_retrieve_router() -> APIRouter:
+    """图检索路由：通过向量检索找到种子节点，然后按深度传播获取子图。
+
+    编排在同进程内走**同一份**（``graph.service.graph_retrieve_gateway``）。
+    成功直接返回检索结果对象；失败返回真实状态码 + ``application/problem+json``
+    （不是 ``{code:0|-1,...}`` 信封）。入参绑定失败由 ``http_api`` 的异常处理器
+    转成 422 problem。
+    """
+    # gateway 取模块而非函数：测试 monkeypatch ``gateway.retrieve_result`` 才生效
+    # （闭包绑定函数引用会绕开 patch）。DTO/gateway 的 import 在模块顶部——
+    # 本文件启用了 ``from __future__ import annotations``，字符串注解必须能
+    # 在模块 globals 里解析，否则 FastAPI 会把 DTO 当 query 参数。
+    retrieve_router = APIRouter()
+
+    # ⚠️ 必须是**同步** def（与原 app.py 内联版一致）：GraphRetrieveDto 不是
+    # pydantic v2 BaseModel，async 路由会把它当 query 参数导致 400。
+    @retrieve_router.post('/retrieval/graph')
+    def graph_retrieve(retrieve_dto: GraphRetrieveDto, request: Request):
+        trace_token = trace.set_trace_id(trace.request_id_from(request))
+        started = time.perf_counter()
+        trace_headers = {trace.REQUEST_ID_HEADER: trace.get_trace_id()}
+        log.info('[graph-retrieve] entry bases=%s seed_k=%s depth=%s score=%s labels=%s '
+                 'query_len=%s',
+                 retrieve_dto.bases, retrieve_dto.seed_k, retrieve_dto.depth,
+                 retrieve_dto.score, retrieve_dto.labels, len(retrieve_dto.query or ''))
+        try:
+            http_headers = httputil.build_http_headers(request.headers)
+            data = gateway.retrieve_result(retrieve_dto, http_headers) or {}
+            base_results = data.get('base_results') or []
+            log.info('[graph-retrieve] done ok=True base_results=%s entities=%s edges=%s '
+                     'elapsed=%.3fs',
+                     len(base_results),
+                     sum(int(item.get('entity_count') or 0) for item in base_results),
+                     sum(int(item.get('edge_count') or 0) for item in base_results),
+                     time.perf_counter() - started)
+            return JSONResponse(content=data, headers=trace_headers)
+        except GraphRetrieveError as error:
+            log.warning('[graph-retrieve] failed bases=%s status=%s code=%s elapsed=%.3fs',
+                        retrieve_dto.bases, error.spec.status, error.spec.code,
+                        time.perf_counter() - started)
+            return problem_response(error.spec, error.detail,
+                                    instance=request.url.path, headers=trace_headers)
+        except Exception:
+            log.exception('[graph-retrieve] failed bases=%s elapsed=%.3fs',
+                          retrieve_dto.bases, time.perf_counter() - started)
+            language_option = httputil.build_http_headers(request.headers).get_language_option()
+            return problem_response(
+                INTERNAL_ERROR, generic_detail(INTERNAL_ERROR, language_option),
+                instance=request.url.path, headers=trace_headers)
+        finally:
+            trace.reset_trace_id(trace_token)
+
+    return retrieve_router

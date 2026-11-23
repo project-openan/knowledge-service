@@ -185,8 +185,17 @@ def build_router() -> APIRouter:
     return router
 
 
-def register_auth_api(app: FastAPI) -> None:
-    """挂载 ``/auth/*`` 与领域异常处理器。必须在 ``register_rkb_api`` 之前调用。"""
-    app.include_router(build_router())
+def register_auth_exception_handlers(app: FastAPI) -> None:
+    """挂 auth 域的领域异常处理器（app 级，与路由挂载点解耦）。"""
     app.add_exception_handler(AuthError, _auth_error_handler)
     app.add_exception_handler(AuthStoreUnavailable, _store_unavailable_handler)
+
+
+def register_auth_api(app: FastAPI) -> None:
+    """独立宿主装配：挂 ``/auth/*`` 路由与领域异常处理器。
+
+    生产装配走 ``http_api``：路由并入统一注册序列，处理器经
+    :func:`register_auth_exception_handlers` 挂载。
+    """
+    app.include_router(build_router())
+    register_auth_exception_handlers(app)

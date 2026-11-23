@@ -226,11 +226,15 @@ def build_router(service: ModelService) -> APIRouter:
     return router
 
 
-def register_model_api(app, service: ModelService = None) -> None:
-    """把模型管理接口挂到 app 上。
+def build_default_router(service: ModelService = None) -> APIRouter:
+    """生产装配形态的模型路由器（路径相对；挂载前缀由宿主决定）。
 
-    **调用点必须在 ``register_rkb_api`` 之前**（见模块 docstring）。
+    缺省用运行时单例服务（``get_model_service``），测试可注入替身。
     """
-    service = service or get_model_service()
-    app.include_router(build_router(service), prefix=MODEL_PREFIX)
+    return build_router(service or get_model_service())
+
+
+def register_model_api(app, service: ModelService = None) -> None:
+    """把模型管理接口挂到 app 上。"""
+    app.include_router(build_default_router(service), prefix=MODEL_PREFIX)
     log.info('Registered model api under %s', MODEL_PREFIX)

@@ -168,9 +168,9 @@ def build_router(service: FlowService) -> APIRouter:
     return router
 
 
-def register_flow_api(app, store=None, capabilities=None, kbase_provider=None,
-                      model_probe=None) -> None:
-    """把 flow API 挂到 app 的唯一对外前缀下。
+def build_flow_router(store=None, capabilities=None, kbase_provider=None,
+                      model_probe=None) -> APIRouter:
+    """构造 flow API 路由器（路径相对；挂载前缀由宿主决定）。
 
     :param store: 省略时用生产默认（``PgFlowStore``，读 ``flow_*`` 三表）；测试注入内存实现
     :param model_probe: 可用模型探测器的替身；省略且 ``capabilities`` 也是省略时，
@@ -189,7 +189,13 @@ def register_flow_api(app, store=None, capabilities=None, kbase_provider=None,
             kbase_provider,
             model_probe,
         )
-    router = build_router(service)
+    return build_router(service)
+
+
+def register_flow_api(app, store=None, capabilities=None, kbase_provider=None,
+                      model_probe=None) -> None:
+    """把 flow API 挂到 app 的唯一对外前缀下。"""
+    router = build_flow_router(store, capabilities, kbase_provider, model_probe)
     app.include_router(router, prefix=RKB_PREFIX)
     log.info('Registered flow api under %s', RKB_PREFIX)
 

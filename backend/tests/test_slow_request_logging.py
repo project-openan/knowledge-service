@@ -1,8 +1,9 @@
 """慢请求埋点（ISSUE-OPS-002）。
 
 单进程后端在后台抽取/入库并发时，偶发把简单只读接口拖过客户端超时。
-``app.py`` 的 HTTP 中间件按 ``RKB_SLOW_REQUEST_LOG_MS`` 阈值打 warning：
-method + path + status + 耗时，便于按路径对账。
+``infrastructure.http.middleware.rate_limit`` 的中间件按
+``RKB_SLOW_REQUEST_LOG_MS`` 阈值打 warning：method + path + status + 耗时，
+便于按路径对账。（自 app.py 抽出，行为不变。）
 
 这里直接跑真实中间件 + 真实 ``/health`` 端点（不连 DB、不跑 lifespan）。
 """
@@ -11,6 +12,7 @@ import logging
 from fastapi.testclient import TestClient
 
 import app as app_module
+from infrastructure.http.middleware import rate_limit as rate_limit_module
 
 HEALTH = '/api/knowledge-service/v1/health'
 
@@ -24,7 +26,7 @@ def _slow_messages (caplog) -> list[str]:
 
 def test_request_at_or_above_threshold_is_logged (monkeypatch, caplog):
     # Arrange：阈值 0 → 每个请求都算「慢」，断言不依赖真实耗时
-    monkeypatch.setattr(app_module, 'SLOW_REQUEST_LOG_MS', 0)
+    monkeypatch.setattr(rate_limit_module, 'SLOW_REQUEST_LOG_MS', 0)
     client = TestClient(app_module.app)
 
     # Act
@@ -39,7 +41,7 @@ def test_request_at_or_above_threshold_is_logged (monkeypatch, caplog):
 
 def test_fast_request_is_not_logged (monkeypatch, caplog):
     # Arrange：阈值调到 1 小时，健康检查不可能命中
-    monkeypatch.setattr(app_module, 'SLOW_REQUEST_LOG_MS', 3_600_000)
+    monkeypatch.setattr(rate_limit_module, 'SLOW_REQUEST_LOG_MS', 3_600_000)
     client = TestClient(app_module.app)
 
     # Act

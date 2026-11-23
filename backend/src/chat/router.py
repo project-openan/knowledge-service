@@ -5,15 +5,14 @@
 
 健康检查统一由 kb_api 的 ``GET <prefix>/health`` 提供。
 
-**挂载顺序有硬要求**：RKB 必须在 `register_rkb_api(app)` **之前**调用本函数。
-kb_api 接口层带一条兜底路由 ``@router.api_route('/{unknown_path:path}')``
-（`http_api.py`），同一前缀下它会**吃掉**后面注册的 ``/query`` ——
-症状是提问拿到 ``0005 + msg:null`` 信封而不是报错，极难排查。
+生产装配里本路由器经 ``http_api.build_router`` 纳入统一注册序列（catch-all
+之前），不再有"被兜底路由吃掉"的顺序坑；独立宿主仍可用 ``register_query_api``
+自行挂载（那时才需要保证它先于宿主的兜底路由）。
 """
 
 from __future__ import annotations
 
-from fastapi import FastAPI
+from fastapi import APIRouter, FastAPI
 
 from shared.prefixes import RKB_PREFIX
 from chat.app import router as query_router
@@ -24,7 +23,16 @@ from chat.trace_api import router as trace_router
 DEFAULT_PREFIX = RKB_PREFIX
 
 
+def build_query_routers() -> list[APIRouter]:
+    """返回编排的两条路由器（路径相对，由宿主决定挂载前缀）。
+
+    供 :func:`http_api.build_router` 纳入统一注册序列（catch-all 之前），
+    也可经 :func:`register_query_api` 挂到独立宿主上。
+    """
+    return [query_router, trace_router]
+
+
 def register_query_api(app: FastAPI, prefix: str) -> None:
     """把编排的 ``/query`` 与只读 ``/query-traces`` 挂到 ``app`` 上。"""
-    app.include_router(query_router, prefix=prefix)
-    app.include_router(trace_router, prefix=prefix)
+    for router in build_query_routers():
+        app.include_router(router, prefix=prefix)
