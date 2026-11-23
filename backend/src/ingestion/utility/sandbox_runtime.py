@@ -108,6 +108,9 @@ _KEEP_ENV = frozenset({
     'PATH', 'PYTHONPATH', 'PYTHONHASHSEED', 'PYTHONUNBUFFERED', 'PYTHONDONTWRITEBYTECODE',
     'HOME', 'TMPDIR', 'TMP', 'TEMP', 'TZ', 'LANG', 'LC_ALL', 'LC_CTYPE',
     'LD_LIBRARY_PATH', 'OPERATOR_ENV_ALLOWLIST',
+    # 日志目录：两套 logger（infrastructure/engine）都认它；不保留会回落到
+    # ``<work_dir>/logs``——宿主目录只读时（如本地 root 残留）沙箱直接起不来
+    'LOG_DIR', 'WORK_DIR',
     'OPENBLAS_NUM_THREADS', 'OMP_NUM_THREADS', 'MKL_NUM_THREADS',
     'NUMEXPR_NUM_THREADS', 'VECLIB_MAXIMUM_THREADS',
 })
