@@ -118,6 +118,7 @@
 import { computed, getCurrentInstance, onMounted, ref } from 'vue'
 import { getLLMModel, getRerankModels } from '@/features/model/api/models'
 import { defaultTopkMapper, default_BGM_score } from '@/features/workflow/lib/workflow'
+import { workflowState } from '@/features/workflow/store'
 import { useCustomOperator } from '@/features/workflow/modules/useCustomOperator.js'
 import { theme } from '@/shared/lib/theme'
 import { ArrowDown, Plus } from '@/shared/lib/icons'
@@ -128,7 +129,6 @@ import {
   isExternalModelReranker
 } from '@/features/workflow/lib/externalModelReranker'
 
-const aipVueInstance = window.aipVueInstance
 const { proxy } = getCurrentInstance()
 const operatorList = ref([])
 const builtinOperatorList = ref([])
@@ -209,7 +209,7 @@ const followDefaultLabel = computed(() => {
 })
 
 function getDefaultTopKWithType (operatorType) {
-  const type = aipVueInstance.$store.state.ragWorkflowType
+  const type = workflowState.ragWorkflowType
   if (type === 'BlendedQueryEngine') {
     return defaultTopkMapper[operatorType].BlendedQueryEngine
   }

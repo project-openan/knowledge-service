@@ -192,6 +192,7 @@
 import { computed, getCurrentInstance, onMounted, ref } from 'vue'
 import { getAllKBList } from '@/features/workflow/api/workflow'
 import { responsesynthesizerDefaultPrompt, defaultTopkMapper, default_RSS_no_context_prompt } from '@/features/workflow/lib/workflow'
+import { workflowState } from '@/features/workflow/store'
 import { KB_NAME_PREFIX } from '@/shared/constants/index.js'
 import { getLLMModel } from '@/features/model/api/models'
 import { useCustomOperator } from '@/features/workflow/modules/useCustomOperator.js'
@@ -329,7 +330,7 @@ async function getLLMList () {
 }
 
 function getDefaultTopKWithType (operatorType) {
-  const type = aipVueInstance.$store.state.ragWorkflowType
+  const type = workflowState.ragWorkflowType
   if (type === 'BlendedQueryEngine') {
     return defaultTopkMapper[operatorType].BlendedQueryEngine
   }

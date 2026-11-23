@@ -320,6 +320,7 @@ import { computed, getCurrentInstance, onMounted, ref } from 'vue'
 import { getModelList } from '@/features/model/api/models'
 import { getAllKBList } from '@/features/workflow/api/workflow'
 import { defaultTopkMapper } from '@/features/workflow/lib/workflow'
+import { workflowState } from '@/features/workflow/store'
 import { uniqueKbNames } from '@/features/workflow/lib/kbSelection'
 import { KB_NAME_PREFIX } from '@/shared/constants/index.js'
 import { useCustomOperator } from '@/features/workflow/modules/useCustomOperator.js'
@@ -335,7 +336,6 @@ import OperatorSection from '@/features/workflow/OperatorSection.vue'
 
 const { transKbsToPublishedOptions, kbOptionClickHandler } = useKbOptions()
 
-const aipVueInstance = window.aipVueInstance
 const { proxy } = getCurrentInstance()
 const operatorList = ref([])
 const builtinOperatorList = ref([])
@@ -544,7 +544,7 @@ function vectorModelOptionsFor () {
 }
 
 function getDefaultTopKWithType (operatorType) {
-  const type = aipVueInstance.$store.state.ragWorkflowType
+  const type = workflowState.ragWorkflowType
   if (type === 'BlendedQueryEngine') {
     return defaultTopkMapper[operatorType].BlendedQueryEngine
   }

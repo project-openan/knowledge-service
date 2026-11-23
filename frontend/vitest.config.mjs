@@ -35,6 +35,14 @@ export default defineConfig({
     globals: true,
     environment: 'node',
     include: ['tests/unit/**/*.spec.js'],
+    coverage: {
+      provider: 'v8',
+      // 统计口径：src 下全部源码（含 engine 对应的前端运行时组件）；静态资源无 JS 不计入
+      include: ['src/**/*.{vue,js,ts}'],
+      exclude: ['src/assets/**'],
+      reporter: ['text', 'text-summary']
+      // 覆盖率门禁（thresholds）在本 PR 测试补齐后启用，见 PR 描述
+    },
     // `src/shared/lib/nameValidator.test.js` 是历史遗留的 `console.log` 冒烟脚本（0 断言），
     // 已按原意改写为 `tests/unit/nameValidator.spec.js`；这里显式排除旧路径，
     // 防止以后有人放宽 include 时又把它当测试收集进来。
