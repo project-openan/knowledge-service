@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="">
+  <head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width,initial-scale=1.0">
+    <meta name="description" content="Knowledge Studio · 文档知识库、图谱知识库、知识检索、对话测试和模型管理。">
+    <title><%= htmlWebpackPlugin.options.title %></title>
+    <!--
+      首屏主题：必须在任何样式/脚本之前执行，否则会先白后黑。
+      存储键与默认值与 src/shared/lib/theme.ts 保持一致（ragstudio-theme / light）。
+    -->
+    <script>
+      (function () {
+        var t = 'light'
+        try {
+          var s = localStorage.getItem('ragstudio-theme')
+          if (s === 'light' || s === 'dark') t = s
+        } catch (e) {}
+        document.documentElement.classList.toggle('dark', t === 'dark')
+        document.documentElement.setAttribute('data-theme', t)
+      })()
+    </script>
+    <style>
+      html { background: #f7f8fa; }
+      html.dark { background: #08090b; }
+
+      /*
+        启动占位：JS 下载/解析期间先给出反馈。`src/app/main.js` 等首个路由就绪
+        才挂载，Vue 挂载时会清空 `#app`，占位随之消失。
+        样式必须内联在这里——此刻任何外部 CSS 都还没到。
+      */
+      .boot-splash {
+        position: fixed;
+        inset: 0;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 18px;
+        font: 500 14px/1.4 "Inter", "Helvetica Neue", Arial, "PingFang SC", "Microsoft YaHei", sans-serif;
+        color: #536383;
+      }
+
+      html.dark .boot-splash { color: #9aa7c2; }
+
+      .boot-splash__ring {
+        width: 26px;
+        height: 26px;
+        border: 2px solid #dbe3ef;
+        border-top-color: #1677ff;
+        border-radius: 50%;
+        animation: boot-spin .8s linear infinite;
+      }
+
+      html.dark .boot-splash__ring {
+        border-color: #24304a;
+        border-top-color: #4096ff;
+      }
+
+      .boot-splash__text { letter-spacing: .04em; }
+
+      @keyframes boot-spin {
+        to { transform: rotate(360deg); }
+      }
+
+      @media (prefers-reduced-motion: reduce) {
+        .boot-splash__ring { animation: none; border-top-color: #1677ff; }
+      }
+    </style>
+  </head>
+  <body>
+    <noscript>
+      <strong>We're sorry but <%= htmlWebpackPlugin.options.title %> doesn't work properly without JavaScript enabled. Please enable it to continue.</strong>
+    </noscript>
+    <div id="app">
+      <div class="boot-splash" role="status" aria-live="polite">
+        <span class="boot-splash__ring" aria-hidden="true"></span>
+        <span class="boot-splash__text"><%= htmlWebpackPlugin.options.title %></span>
+      </div>
+    </div>
+    <!-- built files will be auto injected -->
+  </body>
+</html>
