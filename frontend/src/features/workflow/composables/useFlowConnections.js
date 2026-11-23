@@ -1,50 +1,36 @@
 import { Shape } from '@antv/x6'
 import { requestDeletion } from '@/shared/composables/deletion'
 import { edgeLineAttrs } from '@/features/workflow/composables/useFlowConnectors'
+// 连线校验（成环/去重）与视图选中态机制走共享 X6 编辑器内核
+import {
+  cellViewContainer,
+  edgePairsOf,
+  hasEdgeBetween,
+  setElementClass,
+  wouldCreateCycleInEdges as wouldCreateCycleInEdgesCore
+} from '@/features/graph/lib/x6-editor-core'
 
 /**
  * 画布交互 · 连线（composable）。
  *
  * 职责：拖拽连线校验（含成环检测）、「点击-点击」连线模式（预览边跟随鼠标）、
  * 连线选中与删除、节点视图选中态、Esc 取消连线等键盘交互。
+ * 成环检测/同向去重的算法收拢在共享内核 x6-editor-core.js，这里只保留
+ * 工作流自己的规则装配（预览边排除、in/out 端口方向）。
  */
 export function useFlowConnections () {
   return {
     /** source→target 是否会形成环：从 target 顺着出边能走回 source 即为环。 */
     wouldCreateCycle (sourceId, targetId) {
       return this.wouldCreateCycleInEdges(
-        (this.graph?.getEdges?.() || [])
-          .filter(edge => !edge.getData()?.preview)
-          .map(edge => ({
-            source: edge.getSourceCellId(),
-            target: edge.getTargetCellId()
-          })),
+        edgePairsOf(this.graph, { excludePreview: true }),
         sourceId,
         targetId
       )
     },
     wouldCreateCycleInEdges (edges, sourceId, targetId) {
-      const outgoing = new Map()
-      edges.forEach(edge => {
-        if (!outgoing.has(edge.source)) {
-          outgoing.set(edge.source, [])
-        }
-        outgoing.get(edge.source).push(edge.target)
-      })
-      const seen = new Set()
-      const pending = [targetId]
-      while (pending.length) {
-        const id = pending.pop()
-        if (id === sourceId) {
-          return true
-        }
-        if (seen.has(id)) {
-          continue
-        }
-        seen.add(id)
-        pending.push(...(outgoing.get(id) || []))
-      }
-      return false
+      // 算法实现在内核（BFS：沿出边从 target 走回 source 即成环）
+      return wouldCreateCycleInEdgesCore(edges, sourceId, targetId)
     },
     handleCanvasKeydown (event) {
       if (event.key !== 'Enter' && event.key !== ' ') {
@@ -109,13 +95,11 @@ export function useFlowConnections () {
     },
     selectNodeView (id) {
       this.clearNodeSelection()
-      const node = this.graph?.getCellById?.(id)
-      const view = node ? this.graph.findViewByCell(node) : null
-      view?.container?.classList.add('selected')
+      setElementClass(cellViewContainer(this.graph, id), 'selected', true)
     },
     clearNodeSelection () {
       this.graph?.getNodes?.().forEach(node => {
-        this.graph.findViewByCell(node)?.container?.classList.remove('selected')
+        setElementClass(cellViewContainer(this.graph, node), 'selected', false)
       })
     },
     handleConnectionKey (event) {
@@ -204,9 +188,7 @@ export function useFlowConnections () {
         this.cancelConnection()
         return
       }
-      const exists = (this.graph.getEdges() || []).some(edge =>
-        edge.getSourceCellId() === sourceId && edge.getTargetCellId() === target.id
-      )
+      const exists = hasEdgeBetween(this.graph.getEdges(), sourceId, target.id)
       if (!exists) {
         this.graph.addEdge({
           source: { cell: sourceId, port: sourcePort },

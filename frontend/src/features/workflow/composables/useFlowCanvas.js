@@ -1,9 +1,15 @@
-import { Graph, Shape } from '@antv/x6'
-import { register } from '@antv/x6-vue-shape'
-import { h } from 'vue'
+import { Shape } from '@antv/x6'
 import { getGraphColors } from '@/features/workflow/useNodeConfig'
 import { DEFAULT_CUSTOM_NODE_WIDTH, DEFAULT_CUSTOM_NODE_HEIGHT } from '@/features/workflow/lib/workflow'
 import { edgeLineAttrs } from '@/features/workflow/composables/useFlowConnectors'
+// 画布装配能力走共享 X6 编辑器内核（Graph 实例/事件桥/端口重绘/Vue 形状注册）
+import {
+  applyPortPaint,
+  bindGraphEvents,
+  createEditorGraph,
+  hasEdgeBetween,
+  registerVueShape
+} from '@/features/graph/lib/x6-editor-core'
 import QUERY from '@/features/workflow/modules/queryNode.vue'
 import RESPONSE from '@/features/workflow/modules/responseNode.vue'
 import PRE_RETRIEVER from '@/features/workflow/modules/preretriever/Node.vue'
@@ -17,6 +23,8 @@ import RESPONSE_SYNTHESIZER from '@/features/workflow/modules/responsesynthesize
  * 职责：Graph 实例的创建与配置（缩放/平移/连线校验）、画布事件监听
  * （render:done、edge:connected/removed、几何与端口事件）、主题原地刷新、
  * 视口尺寸跟随、自定义 Vue 节点注册、加载后的排版等待（runPendingArrange）。
+ * Graph 装配/事件挂载/端口重绘/形状注册的共享机制在
+ * `@/features/graph/lib/x6-editor-core.js`（与图谱模板设计器共用）。
  *
  * 返回的是方法映射，由 WorkflowEditorPage 展开进 `methods`：方法体内仍用
  * `this` 访问组件实例（graph、data、$t 等），与拆分前逐字等价。
@@ -25,11 +33,13 @@ export function useFlowCanvas () {
   return {
     initGraph () {
       const { width, height } = this.getCanvasSize()
-      this.graph = new Graph({
+      // Graph 实例装配走共享内核：panning/滚轮缩放/allowBlank/snap 等公共默认由
+      // 内核提供，这里只保留工作流差异（缩放范围 0.2–1.6、flow-adaptive 连线、
+      // 成环与去重校验、out→in 端口规则）。
+      this.graph = createEditorGraph({
         container: document.getElementById('advancedFLow'),
         width,
         height,
-        panning: true, // 画布支持拖拽平移
         mousewheel: { // 画布支持滚轮缩放（缩放范围 0.2–1.6）
           enabled: true,
           minScale: 0.2,
@@ -45,12 +55,8 @@ export function useFlowCanvas () {
           // 端口坐标就是连线端点（x/y），不能再按节点边界裁一次
           anchor: 'center',
           connectionPoint: 'anchor',
-          allowBlank: false,
           allowLoop: false,
           allowMulti: false,
-          snap: {
-            radius: 20
-          },
           createEdge: () => {
             // 拖动中的预览边：虚线主色；连上后 edge:connected 会把样式还原
             const edge = new Shape.Edge({
@@ -78,9 +84,7 @@ export function useFlowCanvas () {
             if (sourceGroup !== 'out' || targetGroup !== 'in') {
               return false
             }
-            if (this.graph.getEdges().some(edge =>
-              edge.getSourceCellId() === sourceCell.id && edge.getTargetCellId() === targetCell.id
-            )) {
+            if (hasEdgeBetween(this.graph.getEdges(), sourceCell.id, targetCell.id)) {
               return false
             }
             return !this.wouldCreateCycle(sourceCell.id, targetCell.id)
@@ -88,8 +92,10 @@ export function useFlowCanvas () {
         }
       })
       this.zoomPercent = Math.round(this.graph.zoom() * 100)
-      this.graph.on('scale', ({ sx }) => {
-        this.zoomPercent = Math.round(sx * 100)
+      bindGraphEvents(this.graph, {
+        scale: ({ sx }) => {
+          this.zoomPercent = Math.round(sx * 100)
+        }
       })
     },
     /**
@@ -109,11 +115,8 @@ export function useFlowCanvas () {
         edgeCell.attr('line', edgeLineAttrs())
       })
       this.graph.getNodes().forEach(node => {
-        ;(node.getPorts() || []).forEach(port => {
-          node.portProp(port.id, 'attrs/circle/stroke', portStroke)
-          node.portProp(port.id, 'attrs/circle/fill', portFill)
-          node.portProp(port.id, 'attrs/dot/fill', portStroke)
-        })
+        // 端口 paint 只写 stroke/fill/dot-fill（含同心圆），几何不动 —— 内核 applyPortPaint
+        applyPortPaint(node, { circleStroke: portStroke, circleFill: portFill, dotFill: portStroke })
       })
     },
     // 画布尺寸取「可见绘图区」（.canvas-viewport），不能用 document：
@@ -204,13 +207,15 @@ export function useFlowCanvas () {
     },
     // 在调用 fromJSON 或者 resetCells 后监听画布完成渲染事件
     graphListenDone () {
-      this.graph.on('render:done', () => {
-        this.nodeLoaded = false
-        this.syncGraphStats()
-        // 批量导入/新建后按当前主题刷一次连线与端口颜色（只改 paint）
-        this.applyGraphTheme()
-        // 视图（含 Vue 卡片 DOM）已就绪，这时量尺寸/排版才准确
-        this.runPendingArrange()
+      bindGraphEvents(this.graph, {
+        'render:done': () => {
+          this.nodeLoaded = false
+          this.syncGraphStats()
+          // 批量导入/新建后按当前主题刷一次连线与端口颜色（只改 paint）
+          this.applyGraphTheme()
+          // 视图（含 Vue 卡片 DOM）已就绪，这时量尺寸/排版才准确
+          this.runPendingArrange()
+        }
       })
     },
     // render:done 后还不能立刻排版：x6-vue-shape 的卡片是 **Teleport** 到
@@ -252,93 +257,101 @@ export function useFlowCanvas () {
       })
     },
     graphListenMouseenter () {
-      this.graph.on('edge:mouseenter', ({ edge }) => {
-        edge.addTools(
-          {
-            name: 'button-remove',
-            args: { distance: -40 }
-          }
-        )
+      bindGraphEvents(this.graph, {
+        'edge:mouseenter': ({ edge }) => {
+          edge.addTools(
+            {
+              name: 'button-remove',
+              args: { distance: -40 }
+            }
+          )
+        }
       })
     },
     graphListenMouseleave () {
-      this.graph.on('edge:mouseleave', ({ cell }) => {
-        if (cell.hasTool('button-remove')) {
-          cell.removeTool('button-remove')
+      bindGraphEvents(this.graph, {
+        'edge:mouseleave': ({ cell }) => {
+          if (cell.hasTool('button-remove')) {
+            cell.removeTool('button-remove')
+          }
         }
       })
     },
     graphListenConnected () {
-      this.graph.on('edge:connected', ({ edge }) => {
-        // 拖动预览边连上后还原为正式连线（虚线 → 实线、去掉 preview 标记）
-        if (edge.getData()?.preview) {
-          edge.setData({ preview: false })
-          edge.attr('line', edgeLineAttrs())
-        }
-        this.scheduleGeometrySync()
-        this.scheduleEdgeDecorations()
-        this.$nextTick(() => this.syncGraphStats())
-        const source = edge.getSourceCell()
-        const target = edge.getTargetCell()
-        const sourcePortId = edge.getSourcePortId()
-        const targetPortId = edge.getTargetPortId()
-
-        // 当连线结束后 给线条终端加上同心圆样式
-        target.portProp(targetPortId, {
-          group: 'in',
-          attrs: {
-            dot: {
-              magnet: true,
-              fill: getGraphColors().portStroke,
-              r: 4
-            }
+      bindGraphEvents(this.graph, {
+        'edge:connected': ({ edge }) => {
+          // 拖动预览边连上后还原为正式连线（虚线 → 实线、去掉 preview 标记）
+          if (edge.getData()?.preview) {
+            edge.setData({ preview: false })
+            edge.attr('line', edgeLineAttrs())
           }
-        })
+          this.scheduleGeometrySync()
+          this.scheduleEdgeDecorations()
+          this.$nextTick(() => this.syncGraphStats())
+          const source = edge.getSourceCell()
+          const target = edge.getTargetCell()
+          const sourcePortId = edge.getSourcePortId()
+          const targetPortId = edge.getTargetPortId()
 
-        // 如果存在定制化的连线的限制 在此设置
+          // 当连线结束后 给线条终端加上同心圆样式
+          target.portProp(targetPortId, {
+            group: 'in',
+            attrs: {
+              dot: {
+                magnet: true,
+                fill: getGraphColors().portStroke,
+                r: 4
+              }
+            }
+          })
 
-        target.setData({
-          type: 'add',
-          sourceNode: source.id,
-          label: source.store.data.label,
-          key: sourcePortId
-        })
-        // 更新输出连接桩位置
-        this.updateOuputPortForSingleOutput(target)
+          // 如果存在定制化的连线的限制 在此设置
+
+          target.setData({
+            type: 'add',
+            sourceNode: source.id,
+            label: source.store.data.label,
+            key: sourcePortId
+          })
+          // 更新输出连接桩位置
+          this.updateOuputPortForSingleOutput(target)
+        }
       })
     },
     graphListenRemoved () {
-      this.graph.on('edge:removed', ({ cell }) => {
-        this.$nextTick(() => this.syncGraphStats())
-        const target = this.graph.getCellById(cell.store.data.target.cell)
-        const sourcePortId = cell.getSourcePortId()
+      bindGraphEvents(this.graph, {
+        'edge:removed': ({ cell }) => {
+          this.$nextTick(() => this.syncGraphStats())
+          const target = this.graph.getCellById(cell.store.data.target.cell)
+          const sourcePortId = cell.getSourcePortId()
 
-        target && target.setData({
-          type: 'remove',
-          deleteInput: cell.store.data.source.cell,
-          key: sourcePortId
-        })
+          target && target.setData({
+            type: 'remove',
+            deleteInput: cell.store.data.source.cell,
+            key: sourcePortId
+          })
 
-        if (target) {
-          const incomingE = this.graph.getIncomingEdges(target.id)
-          const numOfIncomingEdges = incomingE?.length
-          // 如果一个连接桩 删除至没有进来的连线了 那么就把连接桩恢复成圆形样式
-          if (!numOfIncomingEdges) {
-            target.portProp(cell.getTargetPortId(), {
-              group: 'in',
-              attrs: {
-                dot: {
-                  magnet: true,
-                  fill: getGraphColors().portFill,
-                  r: 0
+          if (target) {
+            const incomingE = this.graph.getIncomingEdges(target.id)
+            const numOfIncomingEdges = incomingE?.length
+            // 如果一个连接桩 删除至没有进来的连线了 那么就把连接桩恢复成圆形样式
+            if (!numOfIncomingEdges) {
+              target.portProp(cell.getTargetPortId(), {
+                group: 'in',
+                attrs: {
+                  dot: {
+                    magnet: true,
+                    fill: getGraphColors().portFill,
+                    r: 0
+                  }
                 }
-              }
-            })
+              })
+            }
           }
-        }
 
-        // 更新连接桩位置
-        this.updateOuputPortForSingleOutput(target)
+          // 更新连接桩位置
+          this.updateOuputPortForSingleOutput(target)
+        }
       })
     },
     /**
@@ -357,94 +370,96 @@ export function useFlowCanvas () {
         this.scheduleGeometrySync()
         this.scheduleEdgeDecorations()
       }
-      // 拖动过程中 X6 只发 node:moving（node:moved 要等松手），
-      // 线中段箭头是自绘的，必须逐帧跟算，否则会停在原位、松手后才追上。
-      this.graph.on('node:moving', () => this.scheduleEdgeDecorations())
-      this.graph.on('node:moved', schedule)
-      this.graph.on('node:resized', schedule)
-      this.graph.on('node:added', schedule)
-      this.graph.on('node:change:data', () => {
-        schedule()
-        this.syncGraphStats()
-      })
-      this.graph.on('edge:added', ({ edge }) => {
-        if (!edge.getData()?.preview) {
+      bindGraphEvents(this.graph, {
+        // 拖动过程中 X6 只发 node:moving（node:moved 要等松手），
+        // 线中段箭头是自绘的，必须逐帧跟算，否则会停在原位、松手后才追上。
+        'node:moving': () => this.scheduleEdgeDecorations(),
+        'node:moved': schedule,
+        'node:resized': schedule,
+        'node:added': schedule,
+        'node:change:data': () => {
+          schedule()
+          this.syncGraphStats()
+        },
+        'edge:added': ({ edge }) => {
+          if (!edge.getData()?.preview) {
+            this.scheduleGeometrySync()
+          }
+          this.scheduleEdgeDecorations()
+          this.syncGraphStats()
+        },
+        'edge:removed': () => {
           this.scheduleGeometrySync()
-        }
-        this.scheduleEdgeDecorations()
-        this.syncGraphStats()
+          this.scheduleEdgeDecorations()
+          this.syncGraphStats()
+        },
+        'edge:connected': () => {
+          this.scheduleGeometrySync()
+          this.scheduleEdgeDecorations()
+          this.syncGraphStats()
+        },
+        scale: () => this.scheduleEdgeDecorations()
       })
-      this.graph.on('edge:removed', () => {
-        this.scheduleGeometrySync()
-        this.scheduleEdgeDecorations()
-        this.syncGraphStats()
-      })
-      this.graph.on('edge:connected', () => {
-        this.scheduleGeometrySync()
-        this.scheduleEdgeDecorations()
-        this.syncGraphStats()
-      })
-      this.graph.on('scale', () => this.scheduleEdgeDecorations())
     },
     graphListenPorts () {
-      this.graph.on('node:port:mousedown', ({ e }) => {
-        this.portPointerDown = { x: e.clientX, y: e.clientY, dragged: false }
-      })
-      this.graph.on('node:port:mouseup', ({ e }) => {
-        if (this.portPointerDown) {
-          this.portPointerDown.dragged = Math.hypot(
-            e.clientX - this.portPointerDown.x,
-            e.clientY - this.portPointerDown.y
-          ) > 4
+      bindGraphEvents(this.graph, {
+        'node:port:mousedown': ({ e }) => {
+          this.portPointerDown = { x: e.clientX, y: e.clientY, dragged: false }
+        },
+        'node:port:mouseup': ({ e }) => {
+          if (this.portPointerDown) {
+            this.portPointerDown.dragged = Math.hypot(
+              e.clientX - this.portPointerDown.x,
+              e.clientY - this.portPointerDown.y
+            ) > 4
+          }
+        },
+        'node:port:click': ({ node, port }) => {
+          // 拖动建立连线后浏览器仍可能补一个 click；有位移就不再进入点击模式
+          const dragged = this.portPointerDown?.dragged
+          this.portPointerDown = null
+          if (dragged) {
+            return
+          }
+          const config = node.getPort(port)
+          if (!config) {
+            return
+          }
+          if (config.group === 'out') {
+            this.beginClickConnection(node, port)
+          } else if (config.group === 'in' && this.connectingSource) {
+            this.finishClickConnection(node)
+          }
+        },
+        'edge:click': ({ edge }) => this.selectEdge(edge),
+        'node:mousedown': ({ node }) => {
+          if (!node) {
+            return
+          }
+          this.selectedEdge = null
+          this.selectNodeView(node.id)
+        },
+        'blank:click': () => {
+          this.selectedEdge = null
+          this.cancelConnection()
+          this.clearNodeSelection()
+          this.scheduleEdgeDecorations()
         }
-      })
-      this.graph.on('node:port:click', ({ node, port }) => {
-        // 拖动建立连线后浏览器仍可能补一个 click；有位移就不再进入点击模式
-        const dragged = this.portPointerDown?.dragged
-        this.portPointerDown = null
-        if (dragged) {
-          return
-        }
-        const config = node.getPort(port)
-        if (!config) {
-          return
-        }
-        if (config.group === 'out') {
-          this.beginClickConnection(node, port)
-        } else if (config.group === 'in' && this.connectingSource) {
-          this.finishClickConnection(node)
-        }
-      })
-      this.graph.on('edge:click', ({ edge }) => this.selectEdge(edge))
-      this.graph.on('node:mousedown', ({ node }) => {
-        if (!node) {
-          return
-        }
-        this.selectedEdge = null
-        this.selectNodeView(node.id)
-      })
-      this.graph.on('blank:click', () => {
-        this.selectedEdge = null
-        this.cancelConnection()
-        this.clearNodeSelection()
-        this.scheduleEdgeDecorations()
       })
     },
     registerCustomNode (shape, vueNode) {
-      register({
+      // Vue 卡片形状注册机制收拢在内核 registerVueShape
+      registerVueShape({
         shape,
-        component: {
-          render: () => {
-            return h(vueNode, {
-              // 点击卡片右上角删除按钮 删除该节点
-              onDeleteCardHandle: id => this.deleteNode(id),
-              // 点击卡片右上角设置按钮 弹出设置抽屉
-              onEditCardHandle: nodeInfo => this.editCardHandle(nodeInfo),
-              onInitCardHandle: nodeInfo => this.initCardHandle(nodeInfo),
-              // 点击卡片上的删除按钮
-              onInputDeleteHandle: (inputVariable, id) => this.inputDeleteHandle(inputVariable, id)
-            })
-          }
+        component: vueNode,
+        props: {
+          // 点击卡片右上角删除按钮 删除该节点
+          onDeleteCardHandle: id => this.deleteNode(id),
+          // 点击卡片右上角设置按钮 弹出设置抽屉
+          onEditCardHandle: nodeInfo => this.editCardHandle(nodeInfo),
+          onInitCardHandle: nodeInfo => this.initCardHandle(nodeInfo),
+          // 点击卡片上的删除按钮
+          onInputDeleteHandle: (inputVariable, id) => this.inputDeleteHandle(inputVariable, id)
         }
       })
     },

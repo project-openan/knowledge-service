@@ -37,12 +37,22 @@
 <script setup lang="ts">
 import {ref, onMounted, defineExpose, computed, nextTick, onUnmounted, getCurrentInstance} from 'vue'
 import { Graph, Node, Edge, Shape} from '@antv/x6'
-import { History } from '@antv/x6-plugin-history'
-import { Selection } from '@antv/x6-plugin-selection'
-import { Keyboard } from '@antv/x6-plugin-keyboard'
-import { Clipboard } from '@antv/x6-plugin-clipboard'
-import { Transform } from '@antv/x6-plugin-transform'
 import {registerCustomNodes, getNodeDefaultProperties, getGraphPalette, applyNodeTheme} from '@/features/graph/lib/nodeFactory'
+// 画布装配能力走共享 X6 编辑器内核（Graph 实例/插件/事件桥/装饰/撤销重做）
+import {
+  attachEditorPlugins,
+  bindGraphEvents,
+  createEditorGraph,
+  createTemplateEditorPlugins,
+  editorEdgeLineAttrs,
+  graphCanRedo,
+  graphCanUndo,
+  graphRedo,
+  graphUndo,
+  setEdgeStroke,
+  setNodeSelectedOutline,
+  setPortsVisibility
+} from '@/features/graph/lib/x6-editor-core'
 import { THEME_CHANGE_EVENT } from '@/shared/lib/theme'
 import { CopyDocument, Delete, DocumentCopy } from '@/shared/lib/icons'
 import { getFullCircleVertices } from './geometry'
@@ -98,16 +108,8 @@ const createEdgeByMode = () => {
   const edge = new Shape.Edge({
     shape,
     attrs: {
-      line: {
-        stroke: color,         // 连线颜色（当前主题）
-        strokeWidth: 2,        // 连线宽度 2px
-        targetMarker: {        // 添加箭头标记
-          name: 'classic',
-          size: 6,
-          fill: color,
-          stroke: color
-        }
-      }
+      // 2px 当前主题色 + classic 箭头（内核 editorEdgeLineAttrs）
+      line: editorEdgeLineAttrs({ stroke: color })
     },
     data: {
       direction: connectionMode.value || 'single',
@@ -228,7 +230,9 @@ const initGraph = async () => {
   const palette = getGraphPalette()
 
   try {
-    graph = new Graph({
+    // 画布装配走共享内核：panning/滚轮缩放/allowBlank/snap 等公共默认由内核提供，
+    // 这里只保留模板设计器差异（点状网格、缩放范围 0.5–3、平滑连线、允许自环）。
+    graph = createEditorGraph({
       container: containerRef.value,
       width: width,
       height: height,
@@ -259,14 +263,11 @@ const initGraph = async () => {
         },
         anchor: 'midSide',  // 改为midSide锚点,与RAG工作流一致
         connectionPoint: 'boundary',
-        allowBlank: false,
         allowLoop: true,        // 允许自环
         allowNode: false,       // 不允许连接到节点本体
         allowEdge: false,       // 不允许连接到边
         allowPort: true,        // 允许连接到端口
-        snap: {
-          radius: 20
-        },
+
         // 连接点校验（提取到独立函数）
         validateConnection: validateConnectionPoints,
 
@@ -274,23 +275,7 @@ const initGraph = async () => {
         createEdge: createEdgeByMode,
 
         // 新增边校验（提取到独立函数）
-        validateEdge: validateNewEdge,
-
-        validateConnection({ sourceMagnet, targetMagnet }) {
-          // 如果没有启用连线模式，不允许连接
-          if (!isConnectingEnabled.value) {
-            return false
-          }
-
-          // 验证连接点
-          if (!sourceMagnet || !targetMagnet) {
-            return false
-          }
-
-          // 允许所有连线（包括自环）
-          return true
-        }
-
+        validateEdge: validateNewEdge
       },
 
       highlighting: {
@@ -311,50 +296,8 @@ const initGraph = async () => {
       clipboard: true
     })
 
-    // 注册插件
-    graph
-      .use(new Selection({
-        enabled: true,            // 启用选择插件
-        multiple: true,           // 允许多选
-
-        movable: true,            // 选中元素可移动
-        showNodeSelectionBox: false,   // 禁用默认选择框，使用自定义样式
-        showEdgeSelectionBox: true,      // 新增：显示边的选中态
-        selectCellOnMoved: true,      // 移动时保持选中
-        strict: false,            // 允许部分选中
-
-        // 禁用自动选择新添加的节点
-        selectNodeOnMoved: false,
-
-        // 禁用框选功能，避免拖动画布时出现框选框
-        rubberband: false,
-
-        // 选择框样式
-        className: 'my-selection',
-
-        // 内容配置
-        content: false,
-
-        // 过滤器：哪些元素可以被选择
-        filter: (cell) => {
-          // 可以选择所有节点和边
-          return cell.isNode() || cell.isEdge()
-        }
-      }))
-      .use(new Keyboard({
-        enabled: true
-      }))
-      .use(new Transform({
-        resizing: false,
-        rotating: false
-      }))
-      .use(new History({
-        enabled: true
-      }))
-      .use(new Clipboard({
-        enabled: true
-      }))
-
+    // 注册插件（Selection/Keyboard/Transform/History/Clipboard，清单与顺序在内核）
+    attachEditorPlugins(graph, createTemplateEditorPlugins())
 
   } catch (error) {
     console.error('创建 Graph 对象失败:', error)
@@ -365,8 +308,8 @@ const initGraph = async () => {
 // 设置边选中/取消选中的高亮样式
 const setEdgeHighlight = (edge: any, active: boolean) => {
   try {
-    edge?.attr?.('line/stroke', getGraphPalette().edgeStroke)  // 连线颜色跟随主题
-    edge?.attr?.('line/strokeWidth', 2)  // 连线宽度统一为 2px
+    // 连线颜色跟随主题，宽度统一为 2px（内核 setEdgeStroke）
+    setEdgeStroke(edge, getGraphPalette().edgeStroke)
   } catch (e) {
     console.warn('setEdgeHighlight failed:', e)
   }
@@ -375,10 +318,7 @@ const setEdgeHighlight = (edge: any, active: boolean) => {
 // 显示节点端口
 const showNodePorts = (node: any) => {
   try {
-    const ports = node.getPorts()
-    ports?.forEach?.((port: any) => {
-      node.portProp(port.id, 'attrs/circle/style/visibility', 'visible')
-    })
+    setPortsVisibility(node, true)
   } catch (e) {
     console.warn('showNodePorts failed:', e)
   }
@@ -387,10 +327,7 @@ const showNodePorts = (node: any) => {
 // 隐藏节点端口
 const hideNodePorts = (node: any) => {
   try {
-    const ports = node.getPorts()
-    ports?.forEach?.((port: any) => {
-      node.portProp(port.id, 'attrs/circle/style/visibility', 'hidden')
-    })
+    setPortsVisibility(node, false)
   } catch (e) {
     console.warn('hideNodePorts failed:', e)
   }
@@ -399,15 +336,7 @@ const hideNodePorts = (node: any) => {
 // 设置节点选中样式（圆形蓝色边框）
 const setNodeSelectedStyle = (node: any, selected: boolean) => {
   try {
-    if (selected) {
-      // 选中时显示圆形边框（颜色跟随主题）
-      node.attr('body/strokeWidth', 1)
-      node.attr('body/stroke', getGraphPalette().nodeSelectedStroke)
-    } else {
-      // 未选中时隐藏边框
-      node.attr('body/strokeWidth', 0)
-      node.attr('body/stroke', 'transparent')
-    }
+    setNodeSelectedOutline(node, selected, getGraphPalette())
   } catch (e) {
     console.warn('setNodeSelectedStyle failed:', e)
   }
@@ -478,167 +407,205 @@ const bindEvents = () => {
     return
   }
 
+  // 画布事件统一走内核事件桥（blank:click / cell:click 等转发到组件逻辑）
+  bindGraphEvents(graph, {
+    // 节点点击事件 - 只选中，不打开抽屉
+    'node:click': ({ e }) => {
+      e.stopPropagation()
+      if (e.ctrlKey || e.metaKey) {
+        // 按住 Ctrl/Command 时仅做多选
+        return
+      }
+      // 单击只选中节点，不触发 node-select 事件（不打开抽屉）
+      // X6 的 Selection 插件会自动处理选中状态
+    },
 
+    // 双击事件 - 打开抽屉
+    'node:dblclick': ({ node, e }) => {
+      e.stopPropagation()
+      // 双击时触发 node-select 事件，打开右侧抽屉
+      emit('node-select', node)
+    },
 
-  // 节点点击事件 - 只选中，不打开抽屉
-  graph.on('node:click', ({ e }) => {
-    e.stopPropagation()
-    if (e.ctrlKey || e.metaKey) {
-      // 按住 Ctrl/Command 时仅做多选
-      return
-    }
-    // 单击只选中节点，不触发 node-select 事件（不打开抽屉）
-    // X6 的 Selection 插件会自动处理选中状态
-  })
+    // 边点击事件
+    'edge:click': ({ edge, e }) => {
+      e.stopPropagation()
+      if (e.ctrlKey || e.metaKey) {
+        // 交给选择插件处理选中，不打开抽屉
+        return
+      }
+      emit('edge-select', edge)
+    },
 
-  // 移除鼠标悬停显示端口的功能
-  // 端口只在节点被选中时通过 selection:changed 事件显示
+    // 画布点击事件
+    'blank:click': () => {
+      // 隐藏所有节点的端口
+      const nodes = graph.getNodes()
+      nodes.forEach(node => hideNodePorts(node))
 
-  // 双击事件 - 打开抽屉
-  graph.on('node:dblclick', ({ node, e }) => {
-    e.stopPropagation()
-    // 双击时触发 node-select 事件，打开右侧抽屉
-    emit('node-select', node)
-  })
+      emit('canvas-click')
+    },
 
-  // 边点击事件
-  graph.on('edge:click', ({ edge, e }) => {
-    e.stopPropagation()
-    if (e.ctrlKey || e.metaKey) {
-      // 交给选择插件处理选中，不打开抽屉
-      return
-    }
-    emit('edge-select', edge)
-  })
+    //连线事件
+    'edge:connected': ({ edge }) => {
+      const sNode = edge.getSourceNode()
+      const tNode = edge.getTargetNode()
+      const sPort = (edge.getSource() as any).port as string
+      const tPort = (edge.getTarget() as any).port as string
 
-  // 画布点击事件
-  graph.on('blank:click', () => {
-
-    // 隐藏所有节点的端口
-    const nodes = graph.getNodes()
-    nodes.forEach(node => hideNodePorts(node))
-
-    emit('canvas-click')
-  })
-
-  //连线事件
-  graph.on('edge:connected', ({ edge }) => {
-    const sNode = edge.getSourceNode()
-    const tNode = edge.getTargetNode()
-    const sPort = (edge.getSource() as any).port as string
-    const tPort = (edge.getTarget() as any).port as string
-
-    if (!graph || !sNode) {
-      return
-    }
-
-    // 检测是否为自环连线（同一个节点）
-    const isSelfLoop = sNode.id === tNode?.id
-
-    // 自环连线处理：使用弧线（er 路由）
-    if (isSelfLoop) {
-      // 如果是 self 模式，要求同端口；其他模式允许不同端口
-      if (connectionMode.value === 'self' && sPort !== tPort) {
-        edge.remove()
+      if (!graph || !sNode) {
         return
       }
 
+      // 检测是否为自环连线（同一个节点）
+      const isSelfLoop = sNode.id === tNode?.id
+
+      // 自环连线处理：使用弧线（er 路由）
+      if (isSelfLoop) {
+        // 如果是 self 模式，要求同端口；其他模式允许不同端口
+        if (connectionMode.value === 'self' && sPort !== tPort) {
+          edge.remove()
+          return
+        }
+
+        const edgeStroke = getGraphPalette().edgeStroke
+        const newEdge = graph.addEdge({
+          shape: 'self-loop-edge',
+          source: { cell: sNode.id, port: sPort },
+          target: { cell: sNode.id, port: sPort },
+          connector: { name: 'smooth' }, // 使用平滑连接器
+          attrs: {
+            // 连线颜色（当前主题）/ 2px / 圆头（内核连线样式）
+            line: editorEdgeLineAttrs({ stroke: edgeStroke, fill: 'none', roundCaps: true })
+          },
+          data: { lightStroke: '#1993FF' },
+          vertices: getFullCircleVertices(sNode, sPort) // 使用完整圆形自环顶点
+        })
+
+        edge.remove()
+        emit('edge-select', newEdge)
+        return
+      }
+
+      // 非自环：直线
+      const shapeName = connectionMode.value === 'double' ? 'double-arrow-edge' : 'single-arrow-edge'
       const edgeStroke = getGraphPalette().edgeStroke
       const newEdge = graph.addEdge({
-        shape: 'self-loop-edge',
+        shape: shapeName,
         source: { cell: sNode.id, port: sPort },
-        target: { cell: sNode.id, port: sPort },
-        connector: { name: 'smooth' }, // 使用平滑连接器
+        target: { cell: tNode?.id || sNode.id, port: tPort },
+        connector: { name: 'smooth' },  // 使用平滑连接器
         attrs: {
-          line: {
-            stroke: edgeStroke,  // 连线颜色（当前主题）
-            strokeWidth: 2,     // 连线宽度 2px
-            fill: 'none',
-            strokeLinejoin: 'round',
-            strokeLinecap: 'round',
-            targetMarker: {
-              name: 'classic',
-              size: 6,
-              fill: edgeStroke,
-              stroke: edgeStroke
-            }
-          }
+          // 连线颜色（当前主题）/ 2px / classic 箭头（内核连线样式）
+          line: editorEdgeLineAttrs({ stroke: edgeStroke, fill: 'none' })
         },
-        data: { lightStroke: '#1993FF' },
-        vertices: getFullCircleVertices(sNode, sPort) // 使用完整圆形自环顶点
+        data: { lightStroke: '#1993FF' }
       })
 
       edge.remove()
       emit('edge-select', newEdge)
-      return
-    }
+    },
 
-    // 非自环：直线
-    const shapeName = connectionMode.value === 'double' ? 'double-arrow-edge' : 'single-arrow-edge'
-    const edgeStroke = getGraphPalette().edgeStroke
-    const newEdge = graph.addEdge({
-      shape: shapeName,
-      source: { cell: sNode.id, port: sPort },
-      target: { cell: tNode?.id || sNode.id, port: tPort },
-      connector: { name: 'smooth' },  // 使用平滑连接器
-      attrs: {
-        line: {
-          stroke: edgeStroke,  // 连线颜色（当前主题）
-          strokeWidth: 2,     // 连线宽度 2px
-          fill: 'none',
-          targetMarker: {
-            name: 'classic',
-            size: 6,
-            fill: edgeStroke,
-            stroke: edgeStroke
-          }
+    // 右键菜单 - 改进版
+    'node:contextmenu': ({ node, e }) => {
+      e.preventDefault()
+      e.stopPropagation()
+
+      selectedContextNode.value = node
+      contextMenuVisible.value = true
+
+      // 确保菜单不会超出屏幕边界
+      const menuWidth = 200
+      const menuHeight = 160
+      let left = e.clientX
+      let top = e.clientY
+
+      if (left + menuWidth > window.innerWidth) {
+        left = window.innerWidth - menuWidth - 10
+      }
+      if (top + menuHeight > window.innerHeight) {
+        top = window.innerHeight - menuHeight - 10
+      }
+
+      contextMenuStyle.value = {
+        left: left + 'px',
+        top: top + 'px'
+      }
+    },
+
+    // 画布右键菜单（可选）
+    'blank:contextmenu': ({ e }) => {
+      e.preventDefault()
+
+      selectedContextNode.value = null
+      contextMenuVisible.value = true
+
+      contextMenuStyle.value = {
+        left: e.clientX + 'px',
+        top: e.clientY + 'px'
+      }
+    },
+
+    // 添加节点移动时的防重叠检测
+    'node:moved': ({ node }) => {
+      checkAndResolveOverlap(node)
+    },
+
+    // 添加节点移动中的实时检测
+    'node:moving': ({ node }) => {
+      checkAndPreventOverlap(node)
+    },
+
+    // 选择变化事件
+    'selection:changed': ({ added, removed }) => {
+      // 处理新选中的元素
+      added?.forEach?.((cell: any) => {
+        if (cell.isEdge && cell.isEdge()) {
+          setEdgeHighlight(cell, true)
+        } else if (cell.isNode && cell.isNode()) {
+          // 选中节点时显示端口和圆形边框
+          showNodePorts(cell)
+          setNodeSelectedStyle(cell, true)
         }
-      },
-      data: { lightStroke: '#1993FF' }
-    })
+      })
 
-    edge.remove()
-    emit('edge-select', newEdge)
-  })
+      // 处理取消选中的元素
+      removed?.forEach?.((cell: any) => {
+        if (cell.isEdge && cell.isEdge()) {
+          setEdgeHighlight(cell, false)
+        } else if (cell.isNode && cell.isNode()) {
+          // 取消选中节点时隐藏端口和圆形边框
+          hideNodePorts(cell)
+          setNodeSelectedStyle(cell, false)
+        }
+      })
+    },
 
+    // 框选开始
+    'selection:started': () => {
+    },
 
-  // 右键菜单 - 改进版
-  graph.on('node:contextmenu', ({ node, e }) => {
-    e.preventDefault()
-    e.stopPropagation()
+    // 框选结束
+    'selection:finished': () => {
+      // 手动将矩形范围内的边加入选中并高亮
+      selectEdgesInRubberband()
+    },
 
-    selectedContextNode.value = node
-    contextMenuVisible.value = true
+    // 多个元素移动事件
+    'cell:moved': () => {
+      // 如果需要，可以在这里处理移动后的逻辑
+    },
 
-    // 确保菜单不会超出屏幕边界
-    const menuWidth = 200
-    const menuHeight = 160
-    let left = e.clientX
-    let top = e.clientY
-
-    if (left + menuWidth > window.innerWidth) {
-      left = window.innerWidth - menuWidth - 10
-    }
-    if (top + menuHeight > window.innerHeight) {
-      top = window.innerHeight - menuHeight - 10
-    }
-
-    contextMenuStyle.value = {
-      left: left + 'px',
-      top: top + 'px'
-    }
-  })
-
-  // 画布右键菜单（可选）
-  graph.on('blank:contextmenu', ({ e }) => {
-    e.preventDefault()
-
-    selectedContextNode.value = null
-    contextMenuVisible.value = true
-
-    contextMenuStyle.value = {
-      left: e.clientX + 'px',
-      top: e.clientY + 'px'
+    // 边鼠标抬起兜底：Ctrl 选择保持选中
+    'edge:mouseup': ({ edge, e }) => {
+      if (e.ctrlKey || e.metaKey) {
+        setTimeout(() => {
+          if (!graph?.isSelected(edge)) {
+            graph?.addToSelection?.(edge)
+          }
+          setEdgeHighlight(edge, true)
+        }, 0)
+      }
     }
   })
 
@@ -708,82 +675,6 @@ const bindEvents = () => {
       }
     }
   })
-
-  // 监听节点添加事件，确保新节点端口默认隐藏—— 目前多余，无需此代码也能解决实体4个白点问题
-  // graph.on('node:added', ({ node }) => {
-  //   console.log('node:added 事件触发:', node.id)
-  //   // 立即隐藏端口和边框
-  //   hideNodePorts(node)
-  //   setNodeSelectedStyle(node, false)
-  //   // 取消选中状态
-  //   if (graph.isSelected(node)) {
-  //     graph.unselect(node)
-  //   }
-  // })
-
-  // 添加节点移动时的防重叠检测
-  graph.on('node:moved', ({ node }) => {
-    checkAndResolveOverlap(node)
-  })
-
-  // 添加节点移动中的实时检测
-  graph.on('node:moving', ({ node }) => {
-    checkAndPreventOverlap(node)
-  })
-
-  // 选择变化事件
-  graph.on('selection:changed', ({ added, removed }) => {
-
-    // 处理新选中的元素
-    added?.forEach?.((cell: any) => {
-      if (cell.isEdge && cell.isEdge()) {
-        setEdgeHighlight(cell, true)
-      } else if (cell.isNode && cell.isNode()) {
-        // 选中节点时显示端口和圆形边框
-        showNodePorts(cell)
-        setNodeSelectedStyle(cell, true)
-      }
-    })
-
-    // 处理取消选中的元素
-    removed?.forEach?.((cell: any) => {
-      if (cell.isEdge && cell.isEdge()) {
-        setEdgeHighlight(cell, false)
-      } else if (cell.isNode && cell.isNode()) {
-        // 取消选中节点时隐藏端口和圆形边框
-        hideNodePorts(cell)
-        setNodeSelectedStyle(cell, false)
-      }
-    })
-  })
-
-  // 框选开始
-  graph.on('selection:started', () => {
-  })
-
-  // 框选结束
-  graph.on('selection:finished', () => {
-    // 手动将矩形范围内的边加入选中并高亮
-    selectEdgesInRubberband()
-  })
-
-  // 多个元素移动事件
-  graph.on('cell:moved', () => {
-    // 如果需要，可以在这里处理移动后的逻辑
-  })
-
-  // 边鼠标抬起兜底：Ctrl 选择保持选中
-  graph.on('edge:mouseup', ({ edge, e }) => {
-    if (e.ctrlKey || e.metaKey) {
-      setTimeout(() => {
-        if (!graph?.isSelected(edge)) {
-          graph?.addToSelection?.(edge)
-        }
-        setEdgeHighlight(edge, true)
-      }, 0)
-    }
-  })
-
 }
 
 // 读取当前 rubberband 的屏幕矩形并转为画布坐标
@@ -1154,26 +1045,22 @@ const exportSVG = () => {
   return ''
 }
 
-// 撤销和重做方法
+// 撤销和重做方法（History 插件封装在内核）
 const undo = () => {
-  if (graph && graph.canUndo()) {
-    graph.undo()
-  }
+  graphUndo(graph)
 }
 
 const redo = () => {
-  if (graph && graph.canRedo()) {
-    graph.redo()
-  }
+  graphRedo(graph)
 }
 
 // 检查是否可以撤销/重做
 const canUndo = computed(() => {
-  return graph ? graph.canUndo() : false
+  return graphCanUndo(graph)
 })
 
 const canRedo = computed(() => {
-  return graph ? graph.canRedo() : false
+  return graphCanRedo(graph)
 })
 
 // 加载数据

@@ -8,6 +8,8 @@ import {
 } from '@/features/workflow/lib/flowGeometry'
 import { sourceKindMeta, sourceKindsFromOperators } from '@/features/workflow/lib/retrievalSources'
 import { portDirectionFor } from '@/features/workflow/composables/useFlowConnectors'
+// 视图类名选中态机制走共享 X6 编辑器内核
+import { setElementClass } from '@/features/graph/lib/x6-editor-core'
 
 /**
  * 画布交互 · 卡片几何 / 端口 / 连线装饰 / 统计与排版缩放（composable）。
@@ -174,9 +176,10 @@ export function useFlowGeometry () {
           return
         }
         const preview = !!edge.getData()?.preview
-        view.container.classList.toggle('flow-edge-preview', preview)
-        view.container.classList.toggle('flow-connection', !preview)
-        view.container.classList.toggle('selected', !preview && this.selectedEdge?.id === edge.id)
+        // 选中态/预览态都挂在视图容器类名上（内核 setElementClass）
+        setElementClass(view.container, 'flow-edge-preview', preview)
+        setElementClass(view.container, 'flow-connection', !preview)
+        setElementClass(view.container, 'selected', !preview && this.selectedEdge?.id === edge.id)
         if (preview) {
           return
         }

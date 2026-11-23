@@ -150,6 +150,8 @@ import { createGraphSchemaTemplate, getGraphSchemaTemplateDetail, updateGraphSch
 import { generateUUID } from './lib/graph-template-common'
 import { getFullCircleVertices } from '@/features/graph/components/GraphEditor/geometry'
 import { getGraphPalette } from '@/features/graph/lib/nodeFactory'
+// 画布装配（GraphCanvas）与连线样式都走共享 X6 编辑器内核
+import { editorEdgeLineAttrs } from '@/features/graph/lib/x6-editor-core'
 
 const { proxy } = getCurrentInstance() as any
 
@@ -403,19 +405,8 @@ function createEdgeConfig(sourceNodeId: string, targetNodeId: string, edge: any,
     target: { cell: targetNodeId },
     connector: { name: 'smooth' },
     attrs: {
-      line: {
-        stroke: edgeStroke,
-        strokeWidth: 2,
-        fill: 'none',
-        strokeLinejoin: 'round',
-        strokeLinecap: 'round',
-        targetMarker: {
-          name: 'classic',
-          size: 6,
-          fill: edgeStroke,
-          stroke: edgeStroke
-        }
-      }
+      // 模板边样式（2px 模板色 + classic 箭头 + 圆头）走内核连线参数
+      line: editorEdgeLineAttrs({ stroke: edgeStroke, fill: 'none', roundCaps: true })
     },
     data: {
       edge_type: edge.edge_type,
