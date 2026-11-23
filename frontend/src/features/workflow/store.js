@@ -14,10 +14,9 @@ export const workflowState = reactive({
   }
 })
 
-// 兼容桥：WorkflowEditorPage（pages/workflow，本轮重构禁改）仍直接写
-// `$store.state.ragWorkflowType = ...`。在根 state 对象上定义同名访问器，
-// 把读写转发到上面的单例，旧写入路径与新读取路径始终指向同一份数据，
-// 行为与迁移前完全等价。
+// 兼容桥：WorkflowEditorPage（已迁至 features/workflow/pages）现在直接写
+// workflowState 单例，不再经过这条旧写入路径；保留它只是兜底仍走
+// `$store.state.ragWorkflowType` 的历史代码，读写都转发到同一份数据。
 export function installLegacyWorkflowStateCompat (rootState) {
   Object.defineProperty(rootState, 'ragWorkflowType', {
     get () {

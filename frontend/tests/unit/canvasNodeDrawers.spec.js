@@ -21,7 +21,9 @@ import {
 } from '../../src/features/workflow/lib/externalModelReranker.js'
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..')
-const FLOW_VUE = path.join(ROOT, 'src/pages/workflow/WorkflowEditorPage.vue')
+// 编辑器页面的 script 已拆进 composables：动态 require 抽屉的代码
+// 随 editCardHandle 落在 useFlowDrawer.js（断言语义不变，只换文件）。
+const FLOW_DRAWER_COMPOSABLE = path.join(ROOT, 'src/features/workflow/composables/useFlowDrawer.js')
 const MODULES_DIR = path.join(ROOT, 'src/features/workflow/modules')
 
 /**
@@ -39,7 +41,7 @@ const NODE_DRAWERS = {
 
 describe('画布节点抽屉', () => {
   it('画布仍通过动态 require 加载抽屉', () => {
-    const source = fs.readFileSync(FLOW_VUE, 'utf8')
+    const source = fs.readFileSync(FLOW_DRAWER_COMPOSABLE, 'utf8')
     expect(source).toMatch(/require\(`[^`]*modules\/\$\{[^}]+\}\/Drawer`\)/)
   })
 
