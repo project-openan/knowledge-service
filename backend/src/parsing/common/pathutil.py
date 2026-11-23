@@ -1,7 +1,7 @@
 import os
 import shutil
 
-from parsing.common.logutil import log
+from infrastructure.logging.logutil import log
 
 
 def get_workdir():

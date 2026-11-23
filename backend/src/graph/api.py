@@ -25,7 +25,8 @@ from infrastructure.logging import trace
 from infrastructure.logging.logutil import log
 from shared.problem import INTERNAL_ERROR, generic_detail, problem_response
 from graph.models.graph_retrieve_dto import GraphRetrieveDto
-from graph.service import (graph_export_service, graph_extract_v2_api,
+from graph import graph_extract_v2_api  # HTTP API 层文件，实体在 graph/ 包下
+from graph.service import (graph_export_service,
                            graph_import_api, graph_query_api,
                            graph_schema_service, graph_write_service)
 from graph.service import graph_retrieve_gateway as gateway

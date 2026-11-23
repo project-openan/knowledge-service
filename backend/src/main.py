@@ -5,7 +5,7 @@ import os
 HOST = os.environ.get('KNOWLEDGE_BASE_HOST', '0.0.0.0')
 PORT = int(os.environ.get('KNOWLEDGE_BASE_PORT', '8091'))
 
-if __name__ == '__main__':
+if __name__ == '__main__':  # pragma: no cover —— 守卫块只有在真启动 uvicorn 时才执行，单测不可达（执行即起服务）
     # ``uvicorn`` / ``app`` 的 import **必须留在守卫内**。
     #
     # multiprocessing 的 spawn / forkserver 子进程会执行入口模块

@@ -1,22 +1,38 @@
 # coding=utf-8
+"""兼容垫片：parsing 侧日志已统一到 ``infrastructure.logging.logutil``。
+
+历史上 parsing 有独立的一套日志工具（本文件），与 ``infrastructure/logging/logutil.py``
+并存：两边都在 import 时往 root logger 挂自己的 RotatingFileHandler，同一进程
+两个都 import 时，同一行日志会写进两个文件（排查时要同时翻两处）。现在：
+
+* ``log`` 统一 re-export ``infrastructure.logging.logutil.log`` —— 全进程同一个
+  root logger、同一个文件 handler（带 trace_id）。解析侧调用方已改为直接
+  ``from infrastructure.logging.logutil import log``；
+* 本模块只保留 parsing 特有、仍有调用方的能力：``get_file_handler`` /
+  ``CompressedRotatingFileHandler``（``rkb-*`` 日志文件，目录不存在就
+  ``makedirs(..., exist_ok=True)`` —— 并发解析各自建目录不再 FileExistsError，
+  钉在 ``tests/test_parsing_log_dir_race.py``）。不再在 import 时给 root logger
+  挂第二个 handler（``get_logger`` / ``log.exception`` 覆写随旧实现一并移除）。
+
+新代码不要 import 本模块，直接用 ``infrastructure.logging.logutil``。
+"""
 import gzip
 import logging as origin_logging
 import os
-import re
 import platform
+import re
 import secrets
 import tempfile
 from datetime import datetime, timedelta
 from logging.handlers import RotatingFileHandler
 
+from infrastructure.logging.logutil import log  # noqa: F401  (统一后的全局 logger)
 from parsing.common.profile import Profile
 
 FORMATTER = origin_logging.Formatter(
     "[%(asctime)s.%(msecs)03d][%(process)d][%(thread)d][%(levelname)1s][%(filename)1s:%(lineno)1s] %(message)s",
     "%Y-%m-%d %H:%M:%S") if 'Linux' == platform.system() else origin_logging.Formatter(
     "[%(asctime)s.%(msecs)03d][%(process)d][%(thread)d][%(levelname)1s][%(filename)1s:%(lineno)1s] %(message)s")
-
-DEBUG_MODE = True if Profile.dev() else False
 
 
 class CompressedRotatingFileHandler(RotatingFileHandler):
@@ -131,21 +147,6 @@ class CompressedRotatingFileHandler(RotatingFileHandler):
             self.stream = self._open()
 
 
-def get_logger():
-    logger = origin_logging.getLogger()
-    logger.setLevel(origin_logging.INFO)
-    file_handler = get_file_handler('')
-    logger.addHandler(file_handler)
-
-    if Profile.dev():
-        stream_handler = origin_logging.StreamHandler()
-        stream_handler.setLevel(origin_logging.DEBUG)
-        stream_handler.setFormatter(FORMATTER)
-        logger.addHandler(stream_handler)
-
-    return logger
-
-
 def get_file_handler(suffix):
     log_file_name = "rkb-{}".format(suffix)
     # 日志目录由 LOG_DIR 指定，默认落在系统临时目录
@@ -163,15 +164,3 @@ def get_file_handler(suffix):
     else:
         fh.setLevel(origin_logging.INFO)
     return fh
-
-
-ucli_logger = get_logger()
-log = ucli_logger
-
-
-def new_exception(msg, *args, **kwargs):
-    kwargs['exc_info'] = 1
-    log.warning(msg, *args, **kwargs)
-
-
-log.exception = new_exception

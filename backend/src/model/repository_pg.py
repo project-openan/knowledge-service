@@ -18,6 +18,7 @@
 from __future__ import annotations
 
 import json
+import sys
 from typing import Any, Optional
 
 from shared.errors.api import KbStoreError
@@ -29,6 +30,7 @@ from model.models import (
 )
 
 from infrastructure.db.rows import rows as _rows
+from infrastructure.db.schema_guard import ensure_schema
 
 TABLE_REGISTRY = 'model_registry'
 
@@ -249,13 +251,9 @@ class PgModelStore:
 
         由本模块自己保证，就与「谁先 import、谁先连库」无关了。
         """
-        global _schema_ready
-        if _schema_ready:
-            return
-        with conn.cursor() as cursor:
-            for statement in SCHEMA_STATEMENTS:
-                cursor.execute(statement)
-        _schema_ready = True
+        # 公共实现见 infrastructure/db/schema_guard.py；model 侧维持原语义：
+        # 无锁、DDL 随外层事务一起提交（commit=False）。
+        ensure_schema(conn, SCHEMA_STATEMENTS, owner=sys.modules[__name__], commit=False)
 
     def _execute(self, sql: str, params: tuple = (), *, fetch: Optional[str] = None) -> Any:
         import psycopg2
