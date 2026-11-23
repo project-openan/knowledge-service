@@ -79,7 +79,7 @@ async function logout () {
 <style scoped>
 .user-trigger{border:0;background:transparent;width:28px;height:30px;display:inline-flex;align-items:center;justify-content:center;border-radius:5px;padding:4px}
 .user-trigger:hover{background:var(--rs-bg-selected)}
-.user-avatar{display:grid;place-items:center;width:22px;height:22px;border-radius:50%;background:var(--rs-primary);color:#fff;font-size:11px;font-weight:650;line-height:1;text-transform:uppercase}
+.user-avatar{display:grid;place-items:center;width:22px;height:22px;border-radius:50%;background:var(--rs-primary);color:var(--rs-on-accent);font-size:11px;font-weight:650;line-height:1;text-transform:uppercase}
 .user-avatar--lg{width:32px;height:32px;font-size:14px}
 .user-panel{padding:2px}
 .user-head{display:flex;align-items:center;gap:10px;padding:4px 6px 11px;border-bottom:1px solid var(--rs-border-soft);margin-bottom:6px}

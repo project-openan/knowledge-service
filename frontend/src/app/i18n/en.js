@@ -57,6 +57,8 @@ export default {
     creator: 'Creator',
     editSuccess: 'Edit success',
     formValidateFailed: 'Form validation failed',
+    // reportError fallback: used when the caller has no more specific key
+    operationFailed: 'Operation failed. Please try again later.',
     placeHolder: 'Please enter ',
     noData: 'No data',
     // Accessible name for the top route progress bar (visually a 2px line)

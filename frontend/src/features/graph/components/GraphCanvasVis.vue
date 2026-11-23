@@ -2877,7 +2877,7 @@ export default {
   box-sizing: border-box;
   font-weight: 700;
   font-family: system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
-  color: #fff;
+  color: var(--rs-on-accent);
   background: var(--rs-success);
   border-radius: 999px;
   text-align: center;

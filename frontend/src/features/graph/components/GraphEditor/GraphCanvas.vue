@@ -54,6 +54,7 @@ import {
   setPortsVisibility
 } from '@/features/graph/lib/x6-editor-core'
 import { THEME_CHANGE_EVENT } from '@/shared/lib/theme'
+import { reportError } from '@/shared/lib/reportError'
 import { CopyDocument, Delete, DocumentCopy } from '@/shared/lib/icons'
 import { getFullCircleVertices } from './geometry'
 
@@ -187,8 +188,8 @@ onMounted(async() => {
     emit('initialized', true)
 
   } catch (error) {
-    console.error('GraphCanvas 初始化失败:', error)
-    console.error('错误堆栈:', error.stack)
+    // 初始化失败用户只会看到一块空画布，必须给出可见提示（日志+toast 走统一出口）
+    reportError(error, 'public.loadFailed')
   }
 })
 
@@ -908,7 +909,8 @@ const addNode = (nodeType: string) => {
 
     return node
   } catch (error) {
-    console.error('添加节点时发生错误:', error)
+    // 用户从面板添加节点失败：静默返回 null 会变成「点了没反应」
+    reportError(error, 'public.operationFailed')
     return null
   }
 }
@@ -1170,7 +1172,8 @@ const pasteNode = () => {
     }, 100)
 
   } catch (error) {
-    console.error('粘贴节点失败:', error)
+    // 用户粘贴节点失败：同样需要可见反馈
+    reportError(error, 'public.operationFailed')
   }
 
   contextMenuVisible.value = false

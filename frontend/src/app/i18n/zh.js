@@ -58,6 +58,8 @@ export default {
     creator: '创建人',
     editSuccess: '修改成功',
     formValidateFailed: '表单验证失败',
+    // reportError 的默认兜底文案：调用方没有更具体的 key 时用它
+    operationFailed: '操作失败，请稍后重试',
     placeHolder: '请输入内容',
     noData: '暂无数据',
     // 顶部路由进度条的无障碍名称（视觉上只有一条 2px 的条）

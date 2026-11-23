@@ -1529,7 +1529,7 @@ onUnmounted(() => {
 .graph-import-loading {
   .el-loading-text,
   .vn-loading-text {
-    color: #fff !important;
+    color: var(--rs-on-accent) !important;
     font-size: 14px !important;
     margin-top: 12px !important;
     display: block !important;
@@ -1557,7 +1557,7 @@ onUnmounted(() => {
 .graph-import-loading.vn-loading-mask .vn-loading-text,
 .graph-import-loading .el-loading-text,
 .graph-import-loading .vn-loading-text {
-  color: #fff !important;
+  color: var(--rs-on-accent) !important;
   font-size: 14px !important;
   margin-top: 12px !important;
   display: block !important;

@@ -152,6 +152,7 @@ import { getFullCircleVertices } from '@/features/graph/components/GraphEditor/g
 import { getGraphPalette } from '@/features/graph/lib/nodeFactory'
 // 画布装配（GraphCanvas）与连线样式都走共享 X6 编辑器内核
 import { editorEdgeLineAttrs } from '@/features/graph/lib/x6-editor-core'
+import { reportError } from '@/shared/lib/reportError'
 
 const { proxy } = getCurrentInstance() as any
 
@@ -288,11 +289,8 @@ async function loadTemplateData(schemaId: string) {
     }
 
   } catch (error: any) {
-    console.error('Failed to load template data:', error)
-    const errorMsg = error.message
-      ? `${proxy.$t('modules.kb.loadTemplateFailed')}: ${error.message}`
-      : proxy.$t('modules.kb.loadTemplateFailed')
-    proxy.$message.error(errorMsg)
+    // 用户打开模板设计器失败：console 留痕 + toast，走统一出口
+    reportError(error, 'modules.kb.loadTemplateFailed')
   } finally {
     loading.value = false
   }
@@ -865,11 +863,8 @@ function handleExportJson() {
 
     proxy.$message.success(proxy.$t('modules.kb.exportJsonSuccess'))
   } catch (error: any) {
-    console.error('导出 JSON 失败:', error)
-    const errorMsg = error.message
-      ? `${proxy.$t('modules.kb.exportJsonFailed')}: ${error.message}`
-      : proxy.$t('modules.kb.exportJsonFailed')
-    proxy.$message.error(errorMsg)
+    // 用户导出模板 JSON 失败：console 留痕 + toast，走统一出口
+    reportError(error, 'modules.kb.exportJsonFailed')
   }
 }
 

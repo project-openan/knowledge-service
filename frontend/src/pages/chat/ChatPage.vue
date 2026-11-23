@@ -412,7 +412,7 @@
             v-for="step in traceSteps"
             :key="step.key"
             :timestamp="step.ms"
-            color="#1677ff"
+            color="var(--rs-primary)"
           >
             <b>{{ step.name }}</b>
             <p class="muted">

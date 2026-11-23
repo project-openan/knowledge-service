@@ -109,7 +109,7 @@ defineProps({
       transform: scale(1.1);
 
       :deep(.el-icon) {
-        color: #fff;
+        color: var(--rs-on-accent);
       }
     }
 
