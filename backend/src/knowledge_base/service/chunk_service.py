@@ -74,7 +74,18 @@ def _file_or_raise(kbase_id: str, file_id: str) -> dict:
 
 
 def _embedding(text: str, model: Optional[str]) -> list[float]:
-    raise KbLiteralError('RetCode.embedding.fail')
+    """``EmbeddingExecuteService.doEmbedding(List.of(text), model)`` 取第 0 条。
+
+    ⚠️ 失败时抛的是 **0005 + 字面量 ``RetCode.embedding.fail``** —— key 字符串直接
+    当消息，没走 i18n，不是「内容向量化失败！」那句译文。别「顺手」翻成中文。
+    """
+    from model import gateway as model_gateway
+
+    try:
+        return model_gateway.embed(text, model)
+    except Exception as error:                                     # noqa: BLE001
+        log.error('embedding failed: %s', error)
+        raise KbLiteralError('RetCode.embedding.fail') from error
 
 
 # ----------------------------------------------------------------------

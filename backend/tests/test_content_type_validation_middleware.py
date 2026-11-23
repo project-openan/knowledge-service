@@ -44,7 +44,6 @@ def client(monkeypatch):
     return TestClient(app, raise_server_exceptions=False)
 
 
-@pytest.mark.deferred_module(reason='依赖检索路由')
 def test_compat_prefix_text_plain_reaches_router_level_gate(client):
     """修复前：415 裸 JSON；修复后：路由层闸门按媒体类型判 → 200 + 0005+null。"""
     response = client.post(f'{KBASE_PREFIX}/retrieval', content=b'{}',
@@ -53,7 +52,6 @@ def test_compat_prefix_text_plain_reaches_router_level_gate(client):
     assert response.json()['code'] == 'unsupported_media_type'
 
 
-@pytest.mark.deferred_module(reason='依赖检索路由')
 def test_compat_prefix_absent_content_type_not_gated_by_middleware(client):
     """无 Content-Type 的 POST 同样要走到路由层（结果可能是 0005 或 0004 missing）。"""
     response = client.post(f'{KBASE_PREFIX}/retrieval', content=b'{}')

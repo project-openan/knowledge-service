@@ -21,7 +21,7 @@
 ``RKB_MINIO_ENDPOINT``         ``minio:9000``（不含 scheme）
 ``RKB_MINIO_ACCESS_KEY``       访问密钥
 ``RKB_MINIO_SECRET_KEY``       密钥
-``RKB_MINIO_BUCKET``           桶名（默认 ``openan-kb``）
+``RKB_MINIO_BUCKET``           桶名（默认 ``rag-studio-kb``）
 ``RKB_MINIO_SECURE``           ``true`` 时用 HTTPS
 ``RKB_MINIO_REGION``           可选
 ``RKB_MINIO_PREFIX``           可选对象前缀（多环境/多租户隔离）
@@ -60,7 +60,7 @@ ENV_MINIO_REGION = 'RKB_MINIO_REGION'
 ENV_MINIO_PREFIX = 'RKB_MINIO_PREFIX'
 
 DEFAULT_LOCAL_ROOT = '/data/kb'
-DEFAULT_MINIO_BUCKET = 'openan-kb'
+DEFAULT_MINIO_BUCKET = 'rag-studio-kb'
 DEFAULT_CONTENT_TYPE = 'application/octet-stream'
 
 _TRUTHY = {'1', 'true', 'yes', 'on'}

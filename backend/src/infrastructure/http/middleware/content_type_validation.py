@@ -1,5 +1,5 @@
 """
-Content-Type validation middleware for OpenAN Knowledge Service.
+Content-Type validation middleware for RAG Knowledge Base Service.
 
 This middleware validates the Content-Type header for incoming requests to prevent
 content-type based attacks and ensure proper request handling.

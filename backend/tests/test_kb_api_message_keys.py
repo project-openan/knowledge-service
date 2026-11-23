@@ -38,7 +38,7 @@ KEY_CLASSES = ('KbApiError', 'KbValidationError', 'KbValidatorError', 'KbWrapped
 
 # 扫描到的键数量下限（当前 224）。数字只是防「扫描器坏掉后空集合恒通过」，
 # 不要求精确 —— 键只会随功能增加而增长。
-MIN_EXPECTED_KEYS = 85
+MIN_EXPECTED_KEYS = 150
 MIN_EXPECTED_FILES = 100
 
 #: 这些包**不在**本扫描器范围内，必须显式排除，否则扫描范围被无端扩大 ——

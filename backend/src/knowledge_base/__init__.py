@@ -4,5 +4,5 @@
 ``/api/knowledge-service/v1`` 一个前缀下；响应是纯 JSON + RFC 9457 problem。
 
 分层：router / service / repository / models。DB 访问走 ``db.py`` 的库名窄开关
-（默认 ``openan``）。
+（默认 ``rag_studio``）。
 """

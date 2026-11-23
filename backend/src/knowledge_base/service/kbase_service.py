@@ -357,7 +357,7 @@ def get_kbase_detail(kbase_id: str) -> dict:
     vo['processDetailInfo'] = _localized_text(row.get('process_obj'))
     vo['currentFileCount'] = kbase_store.count_files(kbase_id)
     if str(row.get('category')) == str(CATEGORY_DOCUMENT):
-        # 领域扩展（OpenAN Knowledge Service 独有）：详情页的「N 个切片」角标/指标卡直接用这个值，
+        # 领域扩展（Knowledge Studio 独有）：详情页的「N 个切片」角标/指标卡直接用这个值，
         # 不再单独发 ``chunks?size=1`` 去拿分页信封里的 total。
         vo['chunkCount'] = _chunk_count(row)
     vo['props'] = {
@@ -562,11 +562,18 @@ DEFAULT_PAGE_SIZE = 10
 
 
 def list_embedding_model_names() -> list[str]:
-    """Return the deployment's configured embedding model, if present."""
-    from knowledge_base.service.embedding_dimension import configured_embedding_model
+    """本部署可用的 embedding **注册名**清单（建库/建图谱/画布向量检索节点共用的下拉源）。
 
-    model = configured_embedding_model()
-    return [model] if model else []
+    数据源 = **模型注册表**（模型管理页可增删，见 ``model``）。
+    `kb_embedding` 表已不存在，不再有第二层回落；注册表读不到时返回空清单
+    （与「一个都没注册」同义，页面会提示去模型管理页添加）。
+
+    返回的是 ``model_name``（登记名）：``kb_kbase.embedding_model`` 记的是它。
+    **不是** ``model_code``（发给端点那个）—— 两者是同一模型的两个命名空间，别混。
+    """
+    from model.resolver import embedding_models
+
+    return embedding_models() or []
 
 
 def list_embedding_models() -> list[str]:

@@ -10,7 +10,6 @@ web 的 ``api/operator.js`` 正是发双斜杠的 —— 不折叠，「下载�
 """
 
 
-import pytest
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
@@ -39,21 +38,18 @@ def test_double_slash_without_middleware_falls_into_catch_all():
     assert response.json()['code'] == 'not_found'
 
 
-@pytest.mark.deferred_module(reason='依赖完整的知识库路由')
 def test_double_slash_hits_the_real_route_with_middleware():
     response = _app(with_middleware=True).get(RKB_PREFIX + '//operators/types')
     assert response.status_code == 200
     assert isinstance(response.json(), list)
 
 
-@pytest.mark.deferred_module(reason='依赖完整的知识库路由')
 def test_triple_slash_also_collapses():
     """``///`` 也必须能匹配（AntPathMatcher 丢空段）。"""
     response = _app(with_middleware=True).get(RKB_PREFIX + '///operators/types')
     assert response.status_code == 200
 
 
-@pytest.mark.deferred_module(reason='依赖完整的知识库路由')
 def test_single_slash_untouched():
     response = _app(with_middleware=True).get(TYPES)
     assert response.status_code == 200

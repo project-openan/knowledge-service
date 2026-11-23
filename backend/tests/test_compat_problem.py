@@ -5,14 +5,14 @@
 1. 文案键 / 字面量 / 旧数字码到 ``ProblemSpec`` 的映射（404/409/413/422/500 等）；
 2. RFC 9457 响应体的必填字段、media type 与 HTTP 状态码；
 3. ``detail`` 的中英切换（沿用 ``Accept-Language`` 归一化后的 ``zh``/``en``）；
-4. 仅协议端点 ``/health`` 不走 problem+json；其余契约内路径统一 problem+json。
+4. ``/health`` 返回纯文本，``/query`` 与 ``/retrieval/graph`` 使用统一错误契约。
 """
 
 import json
 
 from infrastructure.http.pagination import page
 from infrastructure.http.responses import accepted, created, no_content
-from shared.prefixes import RKB_PREFIX
+from shared.prefixes import GRAPH_RETRIEVE_PATH, RKB_PREFIX
 from shared.problem import (KEY_SPECS, LITERAL_SPECS, ProblemSpec, generic_detail,
                             owns_problem_path, problem_response, resolve_problem,
                             title_for)
@@ -90,11 +90,13 @@ def test_generic_detail_zh_en_and_never_empty():
 
 def test_title_is_derived_stably_and_has_abbreviation_override():
     assert title_for('knowledge_base_not_found') == 'Knowledge base not found'
+    assert title_for('api_key_not_found') == 'API key not found'
 
 
 def test_owns_problem_path_includes_rest_but_not_protocol_endpoints():
     assert owns_problem_path(f'{RKB_PREFIX}/knowledge-bases')
-    assert owns_problem_path(f'{RKB_PREFIX}/retrieval')
+    assert owns_problem_path(GRAPH_RETRIEVE_PATH)
+    assert owns_problem_path(f'{RKB_PREFIX}/query')
     assert not owns_problem_path(f'{RKB_PREFIX}/health')
     assert not owns_problem_path('/some/other/path')
 

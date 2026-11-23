@@ -89,13 +89,13 @@ def test_extract_session_token():
 
 def test_client_ip_prefers_x_real_ip_and_ignores_spoofed_xff():
     headers = {
-        'x-real-ip': '203.0.113.7',
-        'x-forwarded-for': '1.2.3.4, 203.0.113.7',
+        'x-real-ip': '10.0.0.7',
+        'x-forwarded-for': '1.2.3.4, 10.0.0.7',
     }
-    assert sessions.client_ip(headers, '192.0.2.17') == '203.0.113.7'
+    assert sessions.client_ip(headers, '172.17.0.1') == '10.0.0.7'
 
-    assert sessions.client_ip({'x-forwarded-for': '1.2.3.4'}, '192.0.2.17') == '192.0.2.17'
-    assert sessions.client_ip({}, '192.0.2.17') == '192.0.2.17'
+    assert sessions.client_ip({'x-forwarded-for': '1.2.3.4'}, '172.17.0.1') == '172.17.0.1'
+    assert sessions.client_ip({}, '172.17.0.1') == '172.17.0.1'
     assert sessions.client_ip({'x-real-ip': 'x' * 100}, '') == 'x' * 64
 
 

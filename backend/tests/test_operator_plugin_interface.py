@@ -63,7 +63,6 @@ def test_project_root_imports_are_not_flagged(tmp_path):
     validate_plugin_interface(path)
 
 
-@pytest.mark.deferred_module(reason='依赖内置图谱算子')
 def test_bundled_graph_template_uses_v2_interface():
     """The shipped graph-extraction template must import only the public interface."""
     template = TEMPLATE_DIR / 'graph_extract.zip'

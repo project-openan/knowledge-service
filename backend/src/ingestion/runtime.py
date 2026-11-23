@@ -29,7 +29,7 @@ import logging
 import os
 import threading
 
-from ingestion.service.operator import file_parse_service as FileParseService, text_split_service as TextSplitService
+from ingestion.service.operator import file_parse_service as FileParseService, graph_extract_service as GraphExtractService, text_split_service as TextSplitService
 
 #: 大文件阈值：超过它才参与串行化
 LARGE_FILE_SIZE_LIMIT = 52428800  # 50MB
@@ -110,8 +110,13 @@ def text_split(text_split_info: dict):
     finally:
         _large_file_lock.release()
 
+
 # ---------------------------------------------------------------------------
+# graph_extract（原 POST /kbase/operator/graph_extract）
 # ---------------------------------------------------------------------------
+def graph_extract(graph_extract_info: dict, lang_id: str = 'zh_CN'):
+    """抽图。保持原契约：调用方据 ``code == '0'`` 判成功。"""
+    return GraphExtractService.graph_extract_entry(graph_extract_info, lang_id)
 
 
 # ---------------------------------------------------------------------------
@@ -135,6 +140,6 @@ def code_check_text_split(script_path: str, parameters: dict):
 #: 建表 + 迁移 + 读路径 + 新故障面，买不到任何东西。
 #:
 #: 用户上传的算子是**另一条路**：走 RKB 的 `/api/knowledge-service/v1/operators`，
-#: 落在 `openan.operator` 表 + PVC（见 `src/operators/service/operator_import.py`），
+#: 落在 `rag_studio.operator` 表 + PVC（见 `src/operators/service/operator_import.py`），
 #: 与本文件无关。两条路职责清晰，不要合并。
 SYSTEM_OPERATOR_FILE = os.path.join(os.path.dirname(__file__), 'split', 'operator_all.json')

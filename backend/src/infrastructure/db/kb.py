@@ -1,6 +1,6 @@
-"""访问业务库（``openan``）的连接池封装。
+"""访问业务库（``rag_studio``）的连接池封装。
 
-库名只有一个来源：``RKB_DB_NAME``（默认 ``openan``）。没有运行态/设计态/发布态
+库名只有一个来源：``RKB_DB_NAME``（默认 ``rag_studio``）。没有运行态/设计态/发布态
 之分，也没有图谱专用的库名覆盖开关。
 
 **延迟 import**：``psycopg2.pool`` 与连接参数模块只在 ``_get_pool()`` 内 import，
@@ -17,7 +17,7 @@ from typing import Any
 ENV_DB_NAME = 'RKB_DB_NAME'
 ENV_POOL_MIN = 'RKB_DB_POOL_MIN'
 ENV_POOL_MAX = 'RKB_DB_POOL_MAX'
-DEFAULT_DB_NAME = 'openan'
+DEFAULT_DB_NAME = 'rag_studio'
 DEFAULT_POOL_MIN = 1
 DEFAULT_POOL_MAX = 10
 
@@ -26,7 +26,7 @@ _POOL_LOCK = threading.Lock()
 
 
 def get_kbase_db_name() -> str:
-    """业务库的库名。未设或留空时回落 ``openan``。"""
+    """业务库的库名。未设或留空时回落 ``rag_studio``。"""
     return os.environ.get(ENV_DB_NAME, '').strip() or DEFAULT_DB_NAME
 
 

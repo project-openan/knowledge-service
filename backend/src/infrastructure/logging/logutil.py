@@ -148,11 +148,11 @@ def get_logger():
     # 不要挂两个 RotatingFileHandler：同一行日志会写进两个文件
     # （/app/logs 与 /data/rkb/logs），排查时要同时翻两处、且 /app/logs 不在卷上。
     # 用 root logger 上的标记保证**全进程只挂一个**（谁先 import 谁赢）。
-    if not getattr(logger, '_openan_file_handler', None):
+    if not getattr(logger, '_ragstudio_file_handler', None):
         file_handler = get_file_handler('')
         file_handler.addFilter(TraceIdFilter())
         logger.addHandler(file_handler)
-        logger._openan_file_handler = file_handler
+        logger._ragstudio_file_handler = file_handler
 
     if deployment.is_dev_mode():
         stream_handler = origin_logging.StreamHandler()

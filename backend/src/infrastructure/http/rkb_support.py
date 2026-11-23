@@ -137,8 +137,8 @@ async def validation_handler(request: Request, exc: RequestValidationError):
     * multipart 端点被非 multipart Content-Type 调用 → 400 ``malformed_request``
       （读体阶段解析失败）。
 
-    **只接管 RKB 前缀**：``/health`` 走纯文本协议行为；
-    其余端点一样由这里出 422 problem。
+    **只接管 RKB 前缀**：``/mcp``、``/health`` 走各自的协议行为；
+    ``/query``、``/retrieval/graph`` 与 ``/agent`` 和其余端点一样由这里出 422 problem。
     """
     if not owns_problem_path(request.url.path):
         return await request_validation_exception_handler(request, exc)
@@ -261,7 +261,7 @@ async def http_exception_handler(request: Request, exc: StarletteHTTPException):
     """RKB 前缀下的 ``HTTPException`` → 对应状态码的 problem+json。
 
     典型来源是 multipart 解析失败（400）、方法不允许（405）与框架层的 404。
-    保留原状态码，只把 body 换成 RFC 9457；协议端点（纯文本 ``/health``）
+    保留原状态码，只把 body 换成 RFC 9457；协议端点（``/mcp``、``/health``）
     走各自的默认处理。
     """
     if owns_problem_path(request.url.path):

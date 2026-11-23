@@ -28,7 +28,6 @@ def _fake_import(calls, *, raise_for=None):
     return fake
 
 
-@pytest.mark.deferred_module(reason='依赖内置图谱算子')
 def test_seeds_both_builtin_graph_operators(monkeypatch):
     # Arrange
     calls = []
@@ -57,7 +56,6 @@ def test_skips_operators_that_already_exist(monkeypatch):
     assert bootstrap.ensure_default_operators() == []
 
 
-@pytest.mark.deferred_module(reason='依赖内置图谱算子')
 def test_only_the_missing_operator_is_seeded(monkeypatch):
     # Arrange
     calls = []
@@ -73,7 +71,6 @@ def test_only_the_missing_operator_is_seeded(monkeypatch):
     assert [call['filename'] for call in calls] == ['professional-graph-extract.zip']
 
 
-@pytest.mark.deferred_module(reason='依赖内置图谱算子')
 def test_import_failure_is_logged_and_does_not_block_startup(monkeypatch, caplog):
     # Arrange
     calls = []

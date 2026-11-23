@@ -3,7 +3,7 @@ LocalDisk:
 
 PGDatabase:
   host: !ENV ${RKB_DB_HOST:postgresql}
-  database: !ENV ${RKB_DB_NAME:openan}
+  database: !ENV ${RKB_DB_NAME:rag_studio}
   user: !ENV ${RKB_DB_USER:rag}
   password: !ENV ${RKB_DB_PASSWORD:changeme}
   port: !ENV ${RKB_DB_PORT:5432}

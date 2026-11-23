@@ -326,10 +326,8 @@ def test_zip_slip_is_rejected(tmp_path):
 
 
 def test_operator_templates_are_bundled():
-    """模板都在包内 —— 少了任何一个，前端「下载模板」就是一个空的 zip。
-
-    """
-    for operator_type in ('file_parse', 'text_split', 'rag_operator'):
+    """四个模板都在包内 —— 少了任何一个，前端「下载模板」就是一个空的 zip。"""
+    for operator_type in ('file_parse', 'text_split', 'graph_extract', 'rag_operator'):
         content, filename = operator_service.operator_template_download(operator_type)
         assert filename == f'{operator_type}.zip'
         assert content[:2] == b'PK'

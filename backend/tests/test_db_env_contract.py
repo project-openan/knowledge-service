@@ -9,7 +9,7 @@ from infrastructure.db import kb as kb_db
 
 
 def test_db_conn_info_reads_rkb_names(monkeypatch):
-    monkeypatch.setenv('RKB_DB_HOST', 'db.example.invalid')
+    monkeypatch.setenv('RKB_DB_HOST', 'db.internal')
     monkeypatch.setenv('RKB_DB_PORT', '5544')
     monkeypatch.setenv('RKB_DB_NAME', 'custom_db')
     monkeypatch.setenv('RKB_DB_USER', 'custom_user')
@@ -19,7 +19,7 @@ def test_db_conn_info_reads_rkb_names(monkeypatch):
 
     assert info == {
         'driver': 'psycopg2',
-        'host': 'db.example.invalid',
+        'host': 'db.internal',
         'port': '5544',
         'database': 'custom_db',
         'user': 'custom_user',
@@ -35,7 +35,7 @@ def test_db_conn_info_defaults(monkeypatch):
 
     assert info['host'] is None
     assert info['port'] is None
-    assert info['database'] == 'openan'
+    assert info['database'] == 'rag_studio'
     assert info['user'] is None
     assert info['password'] == ''
 
@@ -51,7 +51,7 @@ def test_legacy_openpalette_names_are_ignored(monkeypatch):
     info = connection_info.get_db_conn_info()
 
     assert info['host'] is None
-    assert info['database'] == 'openan'
+    assert info['database'] == 'rag_studio'
     assert info['user'] is None
     assert info['password'] == ''
 
@@ -59,14 +59,14 @@ def test_legacy_openpalette_names_are_ignored(monkeypatch):
 def test_es_dict_reads_rkb_names(monkeypatch):
     from infrastructure.config import constants
 
-    monkeypatch.setenv('RKB_ES_HOST', 'search.example.invalid')
+    monkeypatch.setenv('RKB_ES_HOST', 'es.internal')
     monkeypatch.setenv('RKB_ES_PORT', '9300')
     monkeypatch.setenv('RKB_ES_USERNAME', 'es-user')
     monkeypatch.setenv('RKB_ES_PASSWORD', 'es-pwd')
     try:
         importlib.reload(constants)
         assert constants.ES_DICT == {
-            'host': 'search.example.invalid',
+            'host': 'es.internal',
             'port': '9300',
             'user': 'es-user',
             'password': 'es-pwd',
@@ -81,4 +81,4 @@ def test_kbase_db_name_uses_rkb_db_name(monkeypatch):
     assert kb_db.get_kbase_db_name() == 'shadow_db'
 
     monkeypatch.setenv(kb_db.ENV_DB_NAME, '   ')
-    assert kb_db.get_kbase_db_name() == 'openan'
+    assert kb_db.get_kbase_db_name() == 'rag_studio'

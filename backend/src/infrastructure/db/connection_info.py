@@ -8,7 +8,7 @@ from __future__ import annotations
 
 import os
 
-DEFAULT_DB_NAME = 'openan'
+DEFAULT_DB_NAME = 'rag_studio'
 
 
 def get_db_conn_info() -> dict:

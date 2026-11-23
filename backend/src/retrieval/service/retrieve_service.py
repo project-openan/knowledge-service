@@ -19,6 +19,7 @@ from __future__ import annotations
 import os
 from typing import Callable, Optional
 
+from model import gateway as model_gateway
 from infrastructure.db import identifiers
 from infrastructure.http import binding
 from shared.errors.api import KbValidationError
@@ -111,7 +112,16 @@ def _validate(dto: dict) -> None:
 
 
 def _query_embedding(dto: dict) -> list[dict]:
-    raise KbValidationError('retrieve.type.invalid')
+    asked_model = dto.get('model', DEFAULT_MODEL)
+    embedding = model_gateway.embed_query(dto['question'], asked_model)
+    return _loop_search(
+        dto['bases'],
+        lambda base: _related_embeddings(
+            embedding, base.get('baseList') or [],
+            base.get('score_threshold', DEFAULT_SCORE_THRESHOLD),
+            base.get('top_k', DEFAULT_TOPK),
+        ),
+    )
 
 
 def _query_keyword(dto: dict) -> list[dict]:

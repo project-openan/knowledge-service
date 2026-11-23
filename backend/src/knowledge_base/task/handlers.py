@@ -13,7 +13,10 @@ from typing import Optional
 
 from infrastructure.db import identifiers
 from infrastructure.storage import kb_storage as storage
+from infrastructure.tasks import cancellation
+from infrastructure.tasks.cancellation import TaskCancelled
 from knowledge_base.task import operator_runtime
+from model import gateway as model_gateway
 from knowledge_base.repository import chunk as chunk_store, directory as directory_store, node_relation as node_relation_store
 from retrieval.service import write as write_service
 from infrastructure.logging.logutil import log
@@ -187,6 +190,7 @@ class FileEmbeddingHandler:
 
             results = list(split_result.get('results') or [])
             for start in range(0, len(results), EMBEDDING_BATCH_SIZE):
+                cancellation.raise_if_cancelled()
                 batch = results[start:start + EMBEDDING_BATCH_SIZE]
                 texts = [node.get('text') for node in batch]
                 vectors = _embed(texts, file_handle.get('modelName'))
@@ -256,7 +260,13 @@ def _persist_index_nodes(kbase_id: str, file_id: str, pk_id: int, table_name: st
 
 
 def _embed(texts: list[str], model_name: Optional[str]) -> list[list[float]]:
-    raise RuntimeError('Document vectorization is unavailable')
+    """批量向量化：**一次请求发整批**。
+
+    ⚠️ 别改回逐条循环：一个文件会变成几十上百次 HTTP，上游每次抖动都被放大成
+    一次「整条文件链回滚」（``FileEmbeddingHandler`` 失败即 rollback）。
+    维度不符**显式抛错**，不截断。
+    """
+    return model_gateway.embed_many(list(texts), model_name)
 
 
 def _kbase_row(kbase_id: str) -> dict:
@@ -281,6 +291,8 @@ def _fail_reason(error: Exception) -> str:
     """
     from shared.errors.api import KbApiError
 
+    if isinstance(error, TaskCancelled):
+        return 'Task cancelled'
     if isinstance(error, KbApiError):
         return error.key
     return 'RetCode.database.updateOrInsertException'

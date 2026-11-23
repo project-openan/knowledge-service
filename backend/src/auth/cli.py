@@ -138,7 +138,7 @@ def _cmd_delete(args) -> int:
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog='python3 -m auth.cli',
-        description='OpenAN Knowledge Service 本地账号管理')
+        description='Knowledge Studio 本地账号管理')
     sub = parser.add_subparsers(dest='command', required=True)
 
     create = sub.add_parser('create', help='新建账号')

@@ -112,7 +112,19 @@ _KEEP_ENV = frozenset({
     'NUMEXPR_NUM_THREADS', 'VECLIB_MAXIMUM_THREADS',
 })
 
-_KEEP_ENV_PREFIXES = ('OPERATOR_',)
+#: 算子**出站**需要的配置前缀，整前缀放行。
+#:
+#: 注意这里**包含其中的 API key**：抽图算子要拿它去调模型网关，属算子正常工作所需。
+#: 与之相对，下面 _DENY_PREFIXES 里的是**知识库数据侧**的凭据 —— 算子从不合法地需要它们，
+#: 而这正是合并后要守的那条线（合并前 A 路只握 PG、B 路连 PG 都不碰；合并后与 RKB 同进程，
+#: 必须靠白名单把数据凭据挡在子进程之外）。
+_KEEP_ENV_PREFIXES = (
+    'MODEL_GATEWAY_',       # 地址/路径/推理开关/网关 key
+    'EMBEDDING_',           # 模型名与维度
+    'GENERATION_',          # 生成端点与 key
+    'RKB_RERANK_',
+    'OPERATOR_',            # 沙箱自身的旋钮
+)
 
 #: 显式拒绝的变量名前缀 —— 知识库数据侧的凭据与库连信息。
 _DENY_PREFIXES = (
@@ -147,7 +159,9 @@ def _is_allowed(name: str) -> bool:
 def sanitize_environment():
     """把当前（子）进程的环境变量收敛到白名单。**在子进程入口第一件事调用**。
 
-    在导入算子模块前运行，以防算子读取应用进程的配置。
+    为什么必须在导入算子模块**之前**：``operator_api.llm``（底层
+    ``model/operator_client.py``）是在**模块导入时**读 ``MODEL_GATEWAY_*``
+    的 —— 顺序错了会静默丢配置（算子退到默认端点）。
 
     返回被剔除的名字列表，便于测试断言与排查。
     """

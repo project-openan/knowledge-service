@@ -128,14 +128,12 @@ def test_render_does_not_throw_for_base_absent_keys():
 
 
 @pytest.mark.parametrize('header', ['*', '*;q=0.9'])
-@pytest.mark.deferred_module(reason='依赖图谱路由')
 def test_graph_import_bad_id_base_bundle_wrapped_into_import_fail(client, header):
     response = _post_import(client, header, _bad_id_zip())
     assert response.status_code == 422
     assert response.json()['code'] == 'import_failed'
 
 
-@pytest.mark.deferred_module(reason='依赖图谱路由')
 def test_graph_import_bad_id_other_languages_unchanged(client):
     zh = _post_import(client, 'zh-CN', _bad_id_zip())
     assert zh.status_code == 422 and zh.json()['code'] == 'validation_failed'
@@ -147,7 +145,6 @@ def test_graph_import_bad_id_other_languages_unchanged(client):
         assert 'graph_' in response.json()['detail']
 
 
-@pytest.mark.deferred_module(reason='依赖图谱路由')
 def test_graph_import_absent_header_is_en(client):
     response = client.post(f'{KBASE_PREFIX}/graph-imports',
                            files={'file': ('t.zip', _bad_id_zip(), 'application/zip')})
@@ -155,7 +152,6 @@ def test_graph_import_absent_header_is_en(client):
     assert 'graph_' in response.json()['detail']
 
 
-@pytest.mark.deferred_module(reason='依赖图谱路由')
 def test_base_bundle_wrap_is_key_scoped(client):
     """包装只对 **base 缺席** 的键生效：``entities.file.required`` 的键
     （``RetCode.graph.import.entities.file.required``）在 base 里，

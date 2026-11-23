@@ -47,7 +47,7 @@ def set_operator_visibility(operator_id: int, payload: dict, request: Request):
     return operator_service.flip_public(operator_id, current_user(request), target)
 
 
-def build_router() -> APIRouter:
+def build_router(*, enable_management: bool = True) -> APIRouter:
     router = APIRouter()
 
     @router.get('/operators')
@@ -57,22 +57,6 @@ def build_router() -> APIRouter:
             request,
             lambda _payload: operator_service.list_operators(
                 operator_query(query), current_user(request), org_id(request)))
-
-    @router.post('/operators')
-    async def operator_import(request: Request, file: UploadFile = File(...)):
-        _require_admin(request)
-        # 先把整包读进内存再分发：``dispatch`` 是同步执行的，读文件是 await 的
-        content = await file.read()
-        filename = file.filename or ''
-        return await dispatch(
-            request,
-            lambda _payload: operator_service.import_operator(
-                filename, content, current_user(request), org_id(request),
-                language(request)),
-            ok_status=201,
-            location=lambda result: (
-                f'{KBASE_PREFIX}/operators/{result.get("id")}'
-                if isinstance(result, dict) and result.get('id') else None))
 
     @router.get('/operators/types')
     async def operator_types():
@@ -118,6 +102,36 @@ def build_router() -> APIRouter:
         return await dispatch(request, lambda _payload: operator_service.get_operator(
             path_long(operator_id)))
 
+    @router.get('/operators/{operator_id}/export')
+    async def operator_export(request: Request, operator_id: str):
+        return await stream_download(
+            request, lambda: operator_service.export_operator(
+                path_long(operator_id), org_id(request)))
+
+    if enable_management:
+        router.include_router(_build_management_router())
+    return router
+
+
+def _build_management_router() -> APIRouter:
+    router = APIRouter()
+
+    @router.post('/operators')
+    async def operator_import(request: Request, file: UploadFile = File(...)):
+        _require_admin(request)
+        # 先把整包读进内存再分发：``dispatch`` 是同步执行的，读文件是 await 的
+        content = await file.read()
+        filename = file.filename or ''
+        return await dispatch(
+            request,
+            lambda _payload: operator_service.import_operator(
+                filename, content, current_user(request), org_id(request),
+                language(request)),
+            ok_status=201,
+            location=lambda result: (
+                f'{KBASE_PREFIX}/operators/{result.get("id")}'
+                if isinstance(result, dict) and result.get('id') else None))
+
     @router.delete('/operators/{operator_id}')
     async def operator_delete(request: Request, operator_id: str):
         return await dispatch(request, lambda _payload: operator_service.delete_operator(
@@ -144,11 +158,4 @@ def build_router() -> APIRouter:
             lambda payload: set_operator_visibility(numeric_id, payload, request),
             with_body=True, body_required=True, ok_status=204)
 
-    @router.get('/operators/{operator_id}/export')
-    async def operator_export(request: Request, operator_id: str):
-        return await stream_download(
-            request, lambda: operator_service.export_operator(
-                path_long(operator_id), org_id(request)))
-
-    # ------------------------------------------------------------------
     return router

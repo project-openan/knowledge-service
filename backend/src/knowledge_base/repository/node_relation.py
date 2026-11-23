@@ -71,6 +71,7 @@ def _resolve_vector_table(kbase_pk_id: int) -> str | None:
 def batch_insert_relations(kbase_id: str, file_id: str, node_ids: list[str]) -> None:
     """关系表 DAO 的 ``batchInsert``：每批 2000 插 ``(kbase_id, directory_id, node_id)``。
 
+    留到 B2 的向量化环节用；先放在这里，与删除逻辑同处一文件便于对照。
     """
     if not node_ids:
         return

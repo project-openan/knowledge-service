@@ -67,7 +67,8 @@ def test_creates_admin_and_writes_0600_password_file(monkeypatch):
     assert captured['allow_weak_password'] is True
     path = os.environ['RKB_ADMIN_PASSWORD_FILE']
     assert open(path, encoding='utf-8').read().strip() == 'configured-password-123'
-    assert (os.stat(path).st_mode & 0o777) == 0o600
+    if os.name == 'posix':
+        assert (os.stat(path).st_mode & 0o777) == 0o600
 
 
 def test_must_change_can_be_disabled(monkeypatch):

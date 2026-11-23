@@ -1,6 +1,7 @@
 """对外路由前缀的**单点定义**。
 
-所有后端接口（含账号）都只挂 :data:`RKB_PREFIX` 一条前缀，nginx 也只反代它。
+所有后端接口（含编排、图谱检索、账号）都只挂 :data:`RKB_PREFIX` 一条前缀，
+nginx 也只反代它。
 
 ## 纪律
 
@@ -9,10 +10,12 @@
 """
 
 #: 对外契约前缀（nginx 只暴露它）。外部集成方请使用这个前缀。
-#: Shared prefix for the service API.
 RKB_PREFIX = '/api/knowledge-service/v1'
 
+#: 图谱向量检索的对外路径。
+#: 仍在 app.py 里、必须在 register_rkb_api 之前注册（兜底路由会吃掉同前缀的后注册路径）。
+GRAPH_RETRIEVE_PATH = f'{RKB_PREFIX}/retrieval/graph'
+
 #: 本地账号登录：``status/login/logout/me/password``。
-#: 与其它领域共用 RKB_PREFIX；必须在 register_rkb_api 之前注册
-#: （kb_api 兜底路由会吃掉同前缀的晚注册路径）。
+#: 与其它领域共用 RKB_PREFIX；必须在 register_rkb_api 之前注册（同一个兜底路由坑）。
 AUTH_PREFIX = f'{RKB_PREFIX}/auth'
