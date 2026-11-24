@@ -1,7 +1,7 @@
 import os
 
 from parsing.common.special_filter import SpecialFilter
-from parsing.common.logutil import log
+from infrastructure.logging.logutil import log
 
 
 class LCDocument:

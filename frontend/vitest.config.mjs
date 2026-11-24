@@ -35,6 +35,18 @@ export default defineConfig({
     globals: true,
     environment: 'node',
     include: ['tests/unit/**/*.spec.js'],
+    coverage: {
+      provider: 'v8',
+      // 统计口径：src 下全部源码；静态资源无 JS 不计入
+      include: ['src/**/*.{vue,js,ts}'],
+      exclude: ['src/assets/**'],
+      reporter: ['text', 'text-summary'],
+      // 覆盖率门禁：行覆盖 ≥95%（与后端 pyproject 的 fail_under=95 同一口径）。
+      // 提例外必须用 v8 ignore 注释并说明不可达理由，不允许「为达标而标」。
+      thresholds: {
+        lines: 95
+      }
+    },
     // `src/shared/lib/nameValidator.test.js` 是历史遗留的 `console.log` 冒烟脚本（0 断言），
     // 已按原意改写为 `tests/unit/nameValidator.spec.js`；这里显式排除旧路径，
     // 防止以后有人放宽 include 时又把它当测试收集进来。

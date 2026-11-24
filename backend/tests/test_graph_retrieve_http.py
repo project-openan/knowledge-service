@@ -9,9 +9,12 @@ from __future__ import annotations
 from fastapi.testclient import TestClient
 
 import app as app_module
+from graph.service import graph_retrieve_gateway as gateway
 from graph.service.graph_retrieve_gateway import GraphRetrieveError
 from shared.prefixes import GRAPH_RETRIEVE_PATH
 from shared.problem import INTERNAL_ERROR
+
+#: 端点已随 kb router 收编进 graph.api；patch gateway 模块上的函数引用
 
 BODY = {'query': 'q', 'embedding': 'e', 'bases': ['graph_kb_1']}
 
@@ -22,7 +25,7 @@ def _client():
 
 def test_success_returns_the_result_object(monkeypatch):
     result = {'base_results': [{'base': 'graph_kb_1'}], 'base_count': 1}
-    monkeypatch.setattr(app_module, '_graph_retrieve_result',
+    monkeypatch.setattr(gateway, 'retrieve_result',
                         lambda retrieve_dto, headers: result)
 
     response = _client().post(GRAPH_RETRIEVE_PATH, json=BODY)
@@ -36,7 +39,7 @@ def test_failure_returns_problem_json(monkeypatch):
     def _raise(retrieve_dto, headers):
         raise GraphRetrieveError(INTERNAL_ERROR, 'graph down')
 
-    monkeypatch.setattr(app_module, '_graph_retrieve_result', _raise)
+    monkeypatch.setattr(gateway, 'retrieve_result', _raise)
 
     response = _client().post(GRAPH_RETRIEVE_PATH, json=BODY)
 

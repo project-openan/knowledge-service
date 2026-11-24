@@ -5,7 +5,7 @@ from parsing.common.pathutil import get_workdir
 from parsing.common.sentence_add_validator import SentenceValidator
 from parsing.common.special_filter import SpecialFilter
 from parsing.common import create_doc, pathutil
-from parsing.common.logutil import log
+from infrastructure.logging.logutil import log
 from parsing.parsers.md_tool.read_md import MdContentParser
 from markdownify import markdownify as md
 

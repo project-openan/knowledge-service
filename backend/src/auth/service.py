@@ -327,14 +327,15 @@ def validate_session(token: str, *, now: Optional[datetime] = None,
         try:
             repo.revoke_session(token_hash)
         except Exception:                                          # noqa: BLE001
-            pass
+            # 过期会话的撤销是 best-effort：失败不掩盖「已过期」这个主结果，但要可观测
+            log.warning('revoke_session on expired token failed', exc_info=True)
         raise session_expired()
 
     if not row.get('enabled'):
         try:
             repo.revoke_user_sessions(int(row['id']))
         except Exception:                                          # noqa: BLE001
-            pass
+            log.warning('revoke_user_sessions on disabled account failed', exc_info=True)
         raise account_disabled()
 
     if touch:
@@ -354,7 +355,8 @@ def _maybe_touch(token_hash: str, session_id: int, current: datetime) -> None:
     try:
         repo.touch_session(session_id)
     except Exception:                                              # noqa: BLE001
-        pass
+        # last_seen_at 更新失败不影响鉴权结果，打点便于发现会话存储劣化
+        log.warning('touch_session failed', exc_info=True)
 
 
 def current_user_or_none(token: str, *, now: Optional[datetime] = None,

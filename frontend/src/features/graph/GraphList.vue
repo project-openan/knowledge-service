@@ -432,29 +432,30 @@ import TableRefreshButton from '@/shared/ui/TableRefreshButton.vue'
 import ListSelectionBar from '@/shared/ui/ListSelectionBar.vue'
 import { requestDeletion } from '@/shared/composables/deletion'
 import { knowledgeGraphListApi, knowledgeBaseStatsApi, deleteKnowledgeGraphApi, importKnowledgeGraphApi, getKnowledgeGraphBasicInfoApi, exportGraphKnowledgeBaseApi } from '@/features/graph/api/knowledgeGraph'
-import CreateKnowledgeDialog from '@/features/knowledge-base/components/CreateKnowledgeDialog.vue'
 import { loadGraphCreateOptions } from './lib/graph-quick-create'
-import { fallbackUploadLimits } from '@/features/knowledge-base/lib/quick-create'
-import JSZip from 'jszip'
-// 状态闸门与状态码：与文档知识库列表页共用同一份实现（模板里用的 isModifyEnabled /
-// isDeleteEnabled 就是这两个别名；图谱页的允许集合与文档知识库
-// **不同**，在 lib 里逐条注明）
+// 跨 feature 一律走 knowledge-base 的公共出口（api/index.js），不深入内部路径
 import {
+  CreateKnowledgeDialog,
+  fallbackUploadLimits,
+  // 状态闸门与状态码：与文档知识库列表页共用同一份实现（模板里用的 isModifyEnabled /
+  // isDeleteEnabled 就是这两个别名；图谱页的允许集合与文档知识库
+  // **不同**，在 lib 里逐条注明）
   KB_STATUS,
   toNum,
   isGraphModifyEnabled as isModifyEnabled,
-  isGraphDeleteEnabled as isDeleteEnabled
-} from '@/features/knowledge-base/lib/list-status'
-// 指标卡数据整形：与文档知识库列表页共用同一份实现，口径（三类状态集合）由本页传入
-import { normalizeStatsResponse, overviewFor } from '@/features/knowledge-base/lib/overview-stats'
-// 状态列文案与筛选分桶的唯一来源：两处读同一份目录，避免「列里有、筛选里没有」
-import {
+  isGraphDeleteEnabled as isDeleteEnabled,
+  // 指标卡数据整形：与文档知识库列表页共用同一份实现，口径（三类状态集合）由本页传入
+  normalizeStatsResponse,
+  overviewFor,
+  // 状态列文案与筛选分桶的唯一来源：两处读同一份目录，避免「列里有、筛选里没有」
   ALL_STATUS_FILTER,
   findStatusDefinition,
   findStatusFilterOption,
   GRAPH_STATUS_DEFINITIONS,
   GRAPH_STATUS_FILTERS
-} from '@/features/knowledge-base/lib/status-catalog'
+} from '@/features/knowledge-base/api'
+import { downloadStaticTemplateZip, localizedTemplateFileName, saveBlobAsFile } from './lib/graphTransfer'
+import JSZip from 'jszip'
 // 自动刷新（定时器 + 「用户输入中暂停」）与文档知识库列表页共用
 import { useListAutoRefresh } from '@/shared/composables/useListAutoRefresh'
 import { docCountLabel } from '@/shared/lib/utils'
@@ -475,8 +476,8 @@ interface KnowledgeGraphItem {
 
 const { proxy } = getCurrentInstance() as any
 const router = useRouter()
-// toNum / isModifyEnabled / isDeleteEnabled 位于
-// @/features/knowledge-base/lib/list-status.ts，模板使用文件头 import 的这几个函数。
+// toNum / isModifyEnabled / isDeleteEnabled 位于 knowledge-base 出口转出的
+// lib/list-status.ts，模板使用文件头 import 的这几个函数。
 
 // 搜索关键词
 const searchKey = ref('')
@@ -996,37 +997,16 @@ function handleImportKnowledgeGraph () {
   }
 }
 
-// 下载模板文件（从 assets/template 目录，根据语言选择对应的模板）
+// 下载模板文件（从 assets/template 目录，根据语言选择对应的模板；
+// fetch + 建隐藏 <a> 触发下载与模版列表页共用 lib/graphTransfer）
 async function handleDownloadTemplate () {
+  // 根据当前语言环境选择模板文件（图谱包名与模版列表页不同）
+  const fileName = localizedTemplateFileName(proxy.$i18n.locale, {
+    zh: 'import_graph_template_ZH.zip',
+    en: 'import_graph_template_EN.zip'
+  })
   try {
-    // 根据当前语言环境选择模板文件
-    const isZh = proxy.$i18n.locale === 'zh'
-    const fileName = isZh ? 'import_graph_template_ZH.zip' : 'import_graph_template_EN.zip'
-
-    // 使用 new URL 配合 import.meta.url 获取静态资源文件路径
-    // 从当前文件位置（knowledgeGraphTab）到 assets/template 的相对路径
-    const templateUrl = new URL(`../../assets/template/${fileName}`, import.meta.url)
-
-    // 使用 fetch 获取文件
-    const response = await fetch(templateUrl)
-    if (!response.ok) {
-      throw new Error('Failed to fetch template file')
-    }
-
-    // 将响应转换为 Blob
-    const blob = await response.blob()
-
-    // 创建一个临时的 <a> 标签来触发下载
-    const link = document.createElement('a')
-    link.href = URL.createObjectURL(blob)
-    link.download = fileName
-    // 将链接添加到 DOM，触发点击，然后移除
-    document.body.appendChild(link)
-    link.click()
-    document.body.removeChild(link)
-
-    // 释放 URL 对象
-    URL.revokeObjectURL(link.href)
+    await downloadStaticTemplateZip(fileName)
   } catch (error) {
     console.error('下载模板文件失败:', error)
     proxy.$message({
@@ -1316,23 +1296,10 @@ async function handleExportGraph (row: KnowledgeGraphItem) {
       throw new Error(proxy.$t('modules.kb.exportGraphFailed'))
     }
 
-    // 创建下载链接
-    const url = URL.createObjectURL(blobData)
-    const link = document.createElement('a')
-    link.href = url
-
-    // 设置文件名：graph_{kbId}_{timestamp}.zip
+    // 设置文件名：graph_{kbId}_{timestamp}.zip；落盘动作与模版导出共用
     const timestamp = new Date().getTime()
     const fileName = `graph_${row.id}_${timestamp}.zip`
-    link.download = fileName
-
-    // 触发下载
-    document.body.appendChild(link)
-    link.click()
-    document.body.removeChild(link)
-
-    // 释放 URL
-    URL.revokeObjectURL(url)
+    saveBlobAsFile(blobData, fileName)
 
     proxy.$message.success(proxy.$t('modules.kb.exportGraphSuccess'))
   } catch (error: any) {
@@ -1562,7 +1529,7 @@ onUnmounted(() => {
 .graph-import-loading {
   .el-loading-text,
   .vn-loading-text {
-    color: #fff !important;
+    color: var(--rs-on-accent) !important;
     font-size: 14px !important;
     margin-top: 12px !important;
     display: block !important;
@@ -1590,7 +1557,7 @@ onUnmounted(() => {
 .graph-import-loading.vn-loading-mask .vn-loading-text,
 .graph-import-loading .el-loading-text,
 .graph-import-loading .vn-loading-text {
-  color: #fff !important;
+  color: var(--rs-on-accent) !important;
   font-size: 14px !important;
   margin-top: 12px !important;
   display: block !important;

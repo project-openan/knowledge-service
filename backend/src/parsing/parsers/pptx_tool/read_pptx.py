@@ -8,7 +8,7 @@ from pptx.enum.shapes import MSO_SHAPE_TYPE
 from pptx.shapes.group import GroupShape
 
 from parsing.common import pathutil
-from parsing.common.logutil import log
+from infrastructure.logging.logutil import log
 from parsing.common.pathutil import get_workdir
 
 work_dir = get_workdir()

@@ -95,8 +95,12 @@ import { $t } from '@/app/i18n/i18n.js'
 import { LayersIcon } from '@/shared/ui/icons'
 import KnowledgeFilePicker from './KnowledgeFilePicker.vue'
 import { fileLimits, formatFileSize } from '../lib/knowledge-files'
-import { getOperatorListApi, knowledgeGraphTemplateListApi, getLlmListApi, extractKnowledgeGraphApi } from '@/features/graph/api/knowledgeGraph'
+// 跨 feature 一律走 graph 的公共出口（api/index.js），不深入内部路径
 import {
+  getOperatorListApi,
+  knowledgeGraphTemplateListApi,
+  getLlmListApi,
+  extractKnowledgeGraphApi,
   buildGraphExtractPayload,
   defaultBuildParams,
   isIntegerArg,
@@ -106,7 +110,7 @@ import {
   CHUNK_SIZE_MAX,
   OVERLAP_MIN,
   OVERLAP_MAX
-} from '@/features/graph/lib/graph-build-config'
+} from '@/features/graph/api'
 
 const open = defineModel({ type: Boolean, default: false })
 const props = defineProps({

@@ -3,7 +3,7 @@ import re
 from parsing.common.decode_tool import detect_encoding
 from parsing.common.sentence_add_validator import SentenceValidator
 from parsing.common.special_filter import SpecialFilter
-from parsing.common.logutil import log
+from infrastructure.logging.logutil import log
 from parsing.parsers.md_tool.md_table_tool import MdTableTool
 chinese_numbers = ["一", "二", "三", "四", "五", "六", "七", "八", "九", "十"]
 

@@ -3,7 +3,7 @@ import openpyxl
 
 from parsing.common import create_doc
 from parsing.common.decode_tool import detect_encoding
-from parsing.common.logutil import log
+from infrastructure.logging.logutil import log
 
 
 class ExcelContentParser():

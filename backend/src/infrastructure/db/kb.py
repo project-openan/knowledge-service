@@ -9,10 +9,13 @@
 
 from __future__ import annotations
 
+import logging
 import os
 import threading
 from contextlib import contextmanager
 from typing import Any
+
+log = logging.getLogger(__name__)
 
 ENV_DB_NAME = 'RKB_DB_NAME'
 ENV_POOL_MIN = 'RKB_DB_POOL_MIN'
@@ -82,7 +85,7 @@ def close_pools() -> None:
             try:
                 pool.closeall()
             except Exception:                                      # noqa: BLE001
-                pass
+                log.warning('pool closeall failed during shutdown', exc_info=True)
         _POOLS.clear()
 
 
@@ -105,7 +108,8 @@ def connection():
         try:
             conn.rollback()
         except Exception:                                          # noqa: BLE001
-            pass
+            # 回滚本身失败（连接已被对端断开/关闭）不能顶掉原始异常，但留痕
+            log.warning('rollback on aborted transaction failed', exc_info=True)
         raise
     else:
         try:

@@ -6,7 +6,7 @@ import uuid
 
 from parsing import corpus
 
-from parsing.common.logutil import log
+from infrastructure.logging.logutil import log
 from parsing.common.pathutil import get_workdir
 from parsing.sensitive import SensitiveWordChecker
 

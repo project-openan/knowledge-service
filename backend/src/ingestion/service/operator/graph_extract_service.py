@@ -9,7 +9,7 @@ import uuid
 
 from parsing import corpus
 
-from parsing.common.logutil import log
+from infrastructure.logging.logutil import log
 from ingestion.service.operator.dangerous_function_visitor import validate_code_security
 from ingestion.split.system_split_manager import pg_manager
 from ingestion.utility.self_operator import check_operator_code

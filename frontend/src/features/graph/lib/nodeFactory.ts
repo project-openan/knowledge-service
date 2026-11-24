@@ -1,5 +1,7 @@
-import { Graph, Node } from '@antv/x6'
+import { Node } from '@antv/x6'
 import { $t } from '@/app/i18n/i18n.js'
+// 形状的幂等守卫注册机制收拢在共享 X6 编辑器内核（与工作流编排器共用）
+import { registerEdgeShape, registerNodeShape } from './x6-editor-core'
 
 /**
  * Theme-aware colours for the X6 graph editor (GraphCanvas / template designer).
@@ -99,33 +101,12 @@ export const applyNodeTheme = (node: Node, palette: GraphPalette = getGraphPalet
   })
 }
 
-// 工具：安全注册（顶层复用，避免重复定义导致 NLOC 膨胀）
-const safeRegisterNode = (name: string, config: any) => {
-  try {
-    Graph.registerNode(name, config, true)
-  } catch (error) {
-    // 重复注册是幂等操作，静默忽略；其他错误才需要暴露
-    if (!(error instanceof Error && error.message.includes('already registered'))) {
-      console.error(`节点 ${name} 注册失败:`, error)
-    }
-  }
-}
-
-const safeRegisterEdge = (name: string, config: any) => {
-  try {
-    Graph.registerEdge(name, config, true)
-  } catch (error) {
-    // 重复注册是幂等操作，静默忽略；其他错误才需要暴露
-    if (!(error instanceof Error && error.message.includes('already registered'))) {
-      console.error(`边 ${name} 注册失败:`, error)
-    }
-  }
-}
+// 工具：安全注册改由内核 registerNodeShape / registerEdgeShape 提供（幂等守卫）
 
 // 子任务 1：注册基础圆形节点（供各类型继承）
 const registerBaseCircleNode = () => {
   const palette = getGraphPalette()
-  safeRegisterNode('base-circle-node', {
+  registerNodeShape('base-circle-node', {
     inherit: 'circle',
     width: 56,
     height: 56,
@@ -245,7 +226,7 @@ const registerBaseCircleNode = () => {
 const registerCommonEdges = () => {
   const palette = getGraphPalette()
   // 自定义边 - 使用安全注册
-  safeRegisterEdge('custom-edge', {
+  registerEdgeShape('custom-edge', {
     inherit: 'edge',
     router: { name: 'orth' },
     connector: { name: 'rounded' },
@@ -262,7 +243,7 @@ const registerCommonEdges = () => {
   })
 
   // 1. 单向箭头边
-  safeRegisterEdge('single-arrow-edge', {
+  registerEdgeShape('single-arrow-edge', {
     inherit: 'edge',
     connector: { name: 'normal' },
     attrs: {
@@ -313,7 +294,7 @@ const registerCommonEdges = () => {
   })
 
   // 2. 双向箭头边
-  safeRegisterEdge('double-arrow-edge', {
+  registerEdgeShape('double-arrow-edge', {
     inherit: 'edge',
     connector: { name: 'normal' },
     attrs: {
@@ -368,7 +349,7 @@ const registerCommonEdges = () => {
   })
 
   // 3. 自环边
-  safeRegisterEdge('self-loop-edge', {
+  registerEdgeShape('self-loop-edge', {
     inherit: 'edge',
     router: {
       name: 'er',
@@ -488,7 +469,7 @@ const buildTypeNodeConfig = (label: string, color: string) => {
 
 const registerTypedCircleNodes = () => {
   NODE_TYPES.forEach(({ type, label, color }) => {
-    safeRegisterNode(`${type}-node`, buildTypeNodeConfig(label, color))
+    registerNodeShape(`${type}-node`, buildTypeNodeConfig(label, color))
   })
 }
 

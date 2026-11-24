@@ -418,9 +418,9 @@ onMounted(() => {
 .login-text-button{border:0;background:transparent;padding:0;color:var(--rs-primary-text);font-size:var(--rs-font-size-caption);line-height:1.6;display:inline-flex;align-items:center;gap:4px}
 .login-text-button:hover{color:var(--rs-primary);text-decoration:underline;text-underline-offset:3px}
 .login-text-button svg{width:12px;height:12px}
-.login-submit{display:flex;align-items:center;justify-content:center;gap:10px;width:100%;height:48px;padding:0 20px;border:1px solid #1677ff;border-radius:7px;background:linear-gradient(100deg,#2585ff,#1670f0);box-shadow:0 4px 10px #1677ff15;color:#fff;font-size:var(--rs-font-size-body);font-weight:550;transition:background .18s,box-shadow .18s}
+.login-submit{display:flex;align-items:center;justify-content:center;gap:10px;width:100%;height:48px;padding:0 20px;border:1px solid var(--rs-primary);border-radius:7px;background:var(--rs-primary);box-shadow:0 4px 10px color-mix(in srgb,var(--rs-primary) 8%,transparent);color:var(--rs-on-accent);font-size:var(--rs-font-size-body);font-weight:550;transition:background .18s,box-shadow .18s}
 .login-submit>svg{width:16px;height:16px;margin-left:4px}
-.login-submit:hover:not(:disabled){background:linear-gradient(100deg,#4096ff,#2585ff);box-shadow:0 5px 15px #1677ff28}
+.login-submit:hover:not(:disabled){background:linear-gradient(100deg,var(--rs-primary-hover),var(--rs-primary));box-shadow:0 5px 15px color-mix(in srgb,var(--rs-primary) 16%,transparent)}
 .login-submit:disabled{opacity:.7;cursor:wait}
 .login-demo-note{display:flex;align-items:flex-start;justify-content:center;gap:6px;font-size:10px;line-height:1.7;color:var(--rs-text-3);margin:-8px 0 0}
 .login-demo-note svg{width:12px;height:12px;margin-top:2px}
@@ -434,7 +434,7 @@ onMounted(() => {
 .login-support{display:flex;justify-content:center;align-items:center;gap:5px;margin:25px 0 0;font-size:var(--rs-font-size-caption);color:var(--rs-text-3)}
 .login-footer{display:flex;align-items:center;justify-content:center;flex-wrap:wrap;gap:12px;color:var(--rs-text-3);font-size:10px;line-height:1.8;padding:12px 0 2px}
 .login-footer-dot{opacity:.5}
-.login-spinner{width:15px;height:15px;border:2px solid #ffffff55;border-top-color:#fff;border-radius:50%;animation:login-spin .7s linear infinite}
+.login-spinner{width:15px;height:15px;border:2px solid color-mix(in srgb,var(--rs-on-accent) 33%,transparent);border-top-color:var(--rs-on-accent);border-radius:50%;animation:login-spin .7s linear infinite}
 .login-help-content{text-align:center;padding:10px 8px}
 .login-help-icon{display:grid;place-items:center;width:48px;height:48px;margin:0 auto;background:var(--rs-bg-selected);color:var(--rs-primary);border-radius:12px}
 .login-help-icon svg{width:23px;height:23px}

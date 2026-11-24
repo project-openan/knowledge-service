@@ -10,7 +10,8 @@
  */
 import { getModelList } from '@/features/model/api/models'
 import { getKbaseFileLimitApi, knowledgeGraphListApi } from '@/features/graph/api/knowledgeGraph'
-import { fallbackUploadLimits, toUploadLimits, type UploadLimits } from '@/features/knowledge-base/lib/quick-create'
+// 跨 feature 一律走 knowledge-base 的公共出口（api/index.js）
+import { fallbackUploadLimits, toUploadLimits, type UploadLimits } from '@/features/knowledge-base/api'
 
 /** 图谱知识库在 `/kbase/search` 里的 category（构建页写死 10）。 */
 const GRAPH_CATEGORY = 10

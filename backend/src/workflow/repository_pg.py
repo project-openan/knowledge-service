@@ -22,6 +22,7 @@
 
 from __future__ import annotations
 
+import sys
 import threading
 from typing import Any, Optional
 
@@ -32,6 +33,8 @@ from workflow.models import (
     FlowPublished,
     WorkflowRecord,
 )
+
+from infrastructure.db.schema_guard import ensure_schema
 
 # 表名固定用 flow_ 前缀（与其它表族区分；SQL 草案里同前缀）
 TABLE_WORKFLOW = 'flow_workflow'
@@ -160,17 +163,10 @@ class PgFlowStore:
         回滚，若 DDL 跟着一起回滚而 ``_schema_ready`` 已置 True，下一请求就会撞
         「表不存在」且不再重试。建表是幂等的，单独提交没有副作用。
         """
-        global _schema_ready
-        if _schema_ready:
-            return
-        with _schema_lock:
-            if _schema_ready:
-                return
-            with conn.cursor() as cursor:
-                for statement in FLOW_SCHEMA_STATEMENTS:
-                    cursor.execute(statement)
-            conn.commit()
-            _schema_ready = True
+        # 公共实现见 infrastructure/db/schema_guard.py；workflow 侧维持原语义：
+        # 双检锁（并发首查只建一次）+ 建完立即提交（commit=True 默认值）。
+        ensure_schema(conn, FLOW_SCHEMA_STATEMENTS,
+                      owner=sys.modules[__name__], lock=_schema_lock)
 
     def _execute(self, sql: str, params: tuple = (), *, fetch: Optional[str] = None) -> Any:
         """执行一条语句（自动提交）；失败抛 :class:`FlowStoreError`。

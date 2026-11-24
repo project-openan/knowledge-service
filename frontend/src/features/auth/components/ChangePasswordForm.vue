@@ -122,8 +122,8 @@ async function submit () {
 .cp-field>input[aria-invalid='true']{border-color:var(--rs-danger)}
 .cp-error{color:var(--rs-danger);font-size:var(--rs-font-size-caption);line-height:1.5;margin:7px 0 -3px}
 .cp-form-error{margin:-4px 0 0}
-.cp-submit{height:46px;border:1px solid #1677ff;border-radius:7px;background:linear-gradient(100deg,#2585ff,#1670f0);color:#fff;font-size:var(--rs-font-size-body);font-weight:550;transition:background .18s,box-shadow .18s;box-shadow:0 4px 10px #1677ff15}
-.cp-submit:hover:not(:disabled){background:linear-gradient(100deg,#4096ff,#2585ff);box-shadow:0 5px 15px #1677ff28}
+.cp-submit{height:46px;border:1px solid var(--rs-primary);border-radius:7px;background:var(--rs-primary);color:var(--rs-on-accent);font-size:var(--rs-font-size-body);font-weight:550;transition:background .18s,box-shadow .18s;box-shadow:0 4px 10px color-mix(in srgb,var(--rs-primary) 8%,transparent)}
+.cp-submit:hover:not(:disabled){background:linear-gradient(100deg,var(--rs-primary-hover),var(--rs-primary));box-shadow:0 5px 15px color-mix(in srgb,var(--rs-primary) 16%,transparent)}
 .cp-submit:disabled{opacity:.7;cursor:wait}
 @media(prefers-reduced-motion:reduce){.cp-field>input,.cp-submit{transition:none}}
 </style>

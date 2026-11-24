@@ -1,7 +1,7 @@
 from parsing.common.decode_tool import detect_encoding
 from parsing.common.sentence_add_validator import SentenceValidator
 from parsing.common.special_filter import SpecialFilter
-from parsing.common.logutil import log
+from infrastructure.logging.logutil import log
 
 
 class TxtContentParser:

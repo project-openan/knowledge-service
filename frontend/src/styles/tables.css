@@ -11,7 +11,7 @@
 .list-table .check-cell { width: 44px; padding-left: 18px; padding-right: 8px; }
 .list-table input[type=checkbox] { appearance: none; width: 17px; height: 17px; border: 1px solid var(--rs-border); border-radius: 4px; margin: 0; background: var(--rs-bg-card); vertical-align: middle; cursor: pointer; }
 .list-table input[type=checkbox]:checked { background: var(--rs-primary); border-color: var(--rs-primary); }
-.list-table input[type=checkbox]:checked:after { content: '✓'; display: block; color: #fff; text-align: center; font-size: 12px; line-height: 15px; }
+.list-table input[type=checkbox]:checked:after { content: '✓'; display: block; color: var(--rs-on-accent); text-align: center; font-size: 12px; line-height: 15px; }
 .list-table b { color: var(--rs-text); font-weight: 550; }
 .table-card { background: var(--rs-bg-card); border: 1px solid var(--rs-border); border-radius: var(--rs-radius); overflow: auto; }
 .list-table .entity { align-items: center; gap: 12px; }

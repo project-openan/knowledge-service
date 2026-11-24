@@ -131,6 +131,8 @@ import {
   extractSchemaDataFromResponse,
   transformSchemaDataToExportFormat
 } from './lib/graph-template-export'
+// 静态模板包下载 / 导出包落盘：与图谱列表页共用同一份传输实现
+import { downloadStaticTemplateZip, localizedTemplateFileName, saveBlobAsFile } from './lib/graphTransfer'
 
 interface KnowledgeGraphTemplateItem {
   id: string
@@ -294,37 +296,16 @@ function handleUpload () {
   uploadInput.value?.click()
 }
 
-// 下载静态模板文件（从 assets/template 目录，根据语言选择对应的模板）
+// 下载静态模板文件（从 assets/template 目录，根据语言选择对应的模板；
+// fetch + 建隐藏 <a> 触发下载与图谱列表页共用 lib/graphTransfer）
 async function handleDownloadStaticTemplate () {
+  // 根据当前语言环境选择模板文件（模版 schema 包名与图谱列表页不同）
+  const fileName = localizedTemplateFileName(proxy.$i18n.locale, {
+    zh: 'import_graph_schema_template_ZH.zip',
+    en: 'import_graph_schema_template_EN.zip'
+  })
   try {
-    // 根据当前语言环境选择模板文件
-    const isZh = proxy.$i18n.locale === 'zh'
-    const fileName = isZh ? 'import_graph_schema_template_ZH.zip' : 'import_graph_schema_template_EN.zip'
-
-    // 使用 new URL 配合 import.meta.url 获取静态资源文件路径
-    // 从当前文件位置（knowledgeGraphTab）到 assets/template 的相对路径
-    const templateUrl = new URL(`../../assets/template/${fileName}`, import.meta.url)
-
-    // 使用 fetch 获取文件
-    const response = await fetch(templateUrl)
-    if (!response.ok) {
-      throw new Error('Failed to fetch template file')
-    }
-
-    // 将响应转换为 Blob
-    const blob = await response.blob()
-
-    // 创建一个临时的 <a> 标签来触发下载
-    const link = document.createElement('a')
-    link.href = URL.createObjectURL(blob)
-    link.download = fileName
-    // 将链接添加到 DOM，触发点击，然后移除
-    document.body.appendChild(link)
-    link.click()
-    document.body.removeChild(link)
-
-    // 释放 URL 对象
-    URL.revokeObjectURL(link.href)
+    await downloadStaticTemplateZip(fileName)
   } catch (error) {
     console.error('下载模板文件失败:', error)
     proxy.$message({
@@ -486,18 +467,6 @@ function handleDeleteConfirm ({ done, setLoading }: { done: () => void, setLoadi
     })
 }
 
-// 下载ZIP文件
-function downloadZipFile (zipBlob: Blob, fileName: string): void {
-  const url = URL.createObjectURL(zipBlob)
-  const link = document.createElement('a')
-  link.href = url
-  link.download = fileName
-  document.body.appendChild(link)
-  link.click()
-  document.body.removeChild(link)
-  URL.revokeObjectURL(url)
-}
-
 // 获取错误消息
 function getExportErrorMessage (error: any): string {
   return error?.detail ||
@@ -533,7 +502,7 @@ async function handleExportTemplate (row: KnowledgeGraphTemplateItem) {
     const zipBlob = await createZipFromExportData(exportData)
     const fileName = `${schemaData.schema_name || schemaData.schema_id || 'template'}.zip`
 
-    downloadZipFile(zipBlob, fileName)
+    saveBlobAsFile(zipBlob, fileName)
     proxy.$message.success(proxy.$t('modules.kb.exportTemplateSuccess'))
   } catch (error: any) {
     console.error('导出模板失败:', error)

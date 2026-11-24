@@ -262,7 +262,7 @@ def _value_matches(arg_type: str, value: Any) -> bool:
     expected = PARAM_TYPES[arg_type]
     try:
         return isinstance(value, expected)
-    except TypeError:
+    except TypeError:  # pragma: no cover —— PARAM_TYPES 的值全是真实类型，isinstance 不可能抛 TypeError（防御性兜底）
         return False
 
 

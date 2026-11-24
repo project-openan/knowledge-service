@@ -21,7 +21,7 @@
 import os
 
 from parsing.common import create_doc
-from parsing.common.logutil import log
+from infrastructure.logging.logutil import log
 from parsing.md_blocks import has_markdown_headings, markdown_to_blocks
 
 

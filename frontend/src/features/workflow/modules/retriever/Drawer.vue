@@ -1,345 +1,292 @@
 <template>
-  <div class="fc-content">
-    <div class="fc-operators-toolbar">
-      <div>
-        <h3>
-          {{ $t('modules.workflow.operatorConfig') }}
-          <span class="text-caption">{{ operatorList.length }}</span>
-        </h3>
-        <p class="text-caption">{{ $t('modules.workflow.operatorConfigHint') }}</p>
+  <OperatorDrawerShell :drawer="drawer">
+    <template #default="{ operator }">
+      <div v-if="operatorKind(operator)" class="fc-source-context text-caption">
+        <span :class="['tag-soft', operatorKind(operator).tone]">
+          <component :is="operatorKind(operator).icon" />{{ $t(operatorKind(operator).labelKey) }}
+        </span>
+        <span>{{ $t('modules.workflow.operatorSourceOnly', { operator: drawer.displayName(operator), kind: $t(operatorKind(operator).labelKey) }) }}</span>
       </div>
-      <el-dropdown v-if="!disableAddOperator" trigger="click" @command="addOperatorWithType">
-        <el-button class="button-compact">
-          <Plus />{{ $t('modules.workflow.addOperator') }}<ArrowDown />
-        </el-button>
-        <template #dropdown>
-          <el-dropdown-menu>
-            <el-dropdown-item
-              v-for="item in builtinOperatorList"
-              :key="item.id"
-              :command="item.id"
+      <p v-if="operator._sourceNotice && !operatorHasSources(operator)" class="fc-source-notice text-caption" role="status">
+        {{ operator._sourceNotice }}
+      </p>
+      <template v-if="operator.operator === 'VectorRetriever'">
+        <div class="fc-grid">
+          <el-form-item :label="$t('knowledge.kbRetrieveStrategy')" required>
+            <el-select
+              v-model="operator.kwargs.strategy"
+              :aria-label="$t('knowledge.kbRetrieveStrategy')"
             >
-              {{ item.name }}
-            </el-dropdown-item>
-          </el-dropdown-menu>
-        </template>
-      </el-dropdown>
-    </div>
-
-    <OperatorSection
-      v-for="(operator, index) in operatorList"
-      :key="operator._key"
-      :operator="operator"
-      :index="index"
-      :options="builtinOperatorList"
-      :collapsed="operator._collapsed"
-      :last="index === operatorList.length - 1"
-      :single="operatorList.length === 1"
-      @toggle="operator._collapsed = !operator._collapsed"
-      @move="move(index, $event)"
-      @remove="remove(index)"
-      @change="changeOperator(operator, $event)"
-    >
-      <JsonEditorVue
-        v-if="operator.custom || !isKnownOperator(operator)"
-        v-model="operator.kwargs"
-        v-bind="{ mode: 'text', stringified: false }"
-        :main-menu-bar="false"
-        class="ai-json-editor--drawer"
-        :class="{ 'jse-theme-dark': theme === 'dark' }"
-      />
-      <el-form v-else label-position="top" @submit.prevent>
-        <div v-if="operatorKind(operator)" class="fc-source-context text-caption">
-          <span :class="['tag-soft', operatorKind(operator).tone]">
-            <component :is="operatorKind(operator).icon" />{{ $t(operatorKind(operator).labelKey) }}
-          </span>
-          <span>{{ $t('modules.workflow.operatorSourceOnly', { operator: displayName(operator), kind: $t(operatorKind(operator).labelKey) }) }}</span>
+              <el-option
+                v-for="item in kbRetrieveStrategyList"
+                :key="item.value"
+                :label="item.name"
+                :value="item.value"
+              />
+            </el-select>
+          </el-form-item>
+          <el-form-item :label="$t('ragFlow.vectorModel')" required>
+            <el-select
+              v-model="operator.kwargs.embedding"
+              :placeholder="$t('ragFlow.vectorModelPlc')"
+              :aria-label="$t('ragFlow.vectorModel')"
+            >
+              <el-option
+                v-for="item in vectorModelOptionsFor()"
+                :key="item.modelId || item.value"
+                :label="item.label"
+                :value="item.value"
+              />
+            </el-select>
+          </el-form-item>
         </div>
-        <p v-if="operator._sourceNotice && !operatorHasSources(operator)" class="fc-source-notice text-caption" role="status">
-          {{ operator._sourceNotice }}
-        </p>
-        <template v-if="operator.operator === 'VectorRetriever'">
-          <div class="fc-grid">
-            <el-form-item :label="$t('knowledge.kbRetrieveStrategy')" required>
-              <el-select
-                v-model="operator.kwargs.strategy"
-                :aria-label="$t('knowledge.kbRetrieveStrategy')"
+        <div class="fc-source-list">
+          <section
+            v-for="(item, kbIndex) in operator.kwargs.knowledge_info_list"
+            :key="kbIndex"
+            class="fc-source"
+          >
+            <div class="fc-source-header">
+              <span>
+                {{ $t('modules.workflow.sourceIndex', { index: kbIndex + 1 }) }}
+              </span>
+              <button
+                v-if="operator.kwargs.knowledge_info_list.length > 1"
+                type="button"
+                class="fc-text-action fc-delete text-caption"
+                :aria-label="$t('modules.workflow.removeSource')"
+                @click="deleteKb(operator.kwargs.knowledge_info_list, kbIndex)"
               >
-                <el-option
-                  v-for="item in kbRetrieveStrategyList"
-                  :key="item.value"
-                  :label="item.name"
-                  :value="item.value"
-                />
-              </el-select>
-            </el-form-item>
-            <el-form-item :label="$t('ragFlow.vectorModel')" required>
-              <el-select
-                v-model="operator.kwargs.embedding"
-                :placeholder="$t('ragFlow.vectorModelPlc')"
-                :aria-label="$t('ragFlow.vectorModel')"
-              >
-                <el-option
-                  v-for="item in vectorModelOptionsFor()"
-                  :key="item.modelId || item.value"
-                  :label="item.label"
-                  :value="item.value"
-                />
-              </el-select>
-            </el-form-item>
-          </div>
-          <div class="fc-source-list">
-            <section
-              v-for="(item, kbIndex) in operator.kwargs.knowledge_info_list"
-              :key="kbIndex"
-              class="fc-source"
-            >
-              <div class="fc-source-header">
-                <span>
-                  {{ $t('modules.workflow.sourceIndex', { index: kbIndex + 1 }) }}
-                </span>
-                <button
-                  v-if="operator.kwargs.knowledge_info_list.length > 1"
-                  type="button"
-                  class="fc-text-action fc-delete text-caption"
-                  :aria-label="$t('modules.workflow.removeSource')"
-                  @click="deleteKb(operator.kwargs.knowledge_info_list, kbIndex)"
-                >
-                  <Delete />{{ $t('public.delete') }}
-                </button>
-              </div>
-              <el-form-item :label="$t('knowledge.knowledgeBase')" required>
-                <el-select
-                  v-model="item.knowledge_base_name"
-                  multiple
-                  filterable
-                  :placeholder="$t('knowledge.selectKnowledge')"
-                  :aria-label="$t('knowledge.knowledgeBase')"
-                >
-                  <el-option-group
-                    v-for="group in (kbListWithModel[operator.kwargs.embedding] || [])"
-                    :key="group.label"
-                    :label="group.label"
-                  >
-                    <el-option
-                      v-for="option in group.options.filter(opt => !opt.value.includes('graph'))"
-                      :key="option.value"
-                      :label="option.label"
-                      :value="option.value"
-                      @click="kbOptionClickHandler(option.value, item.knowledge_base_name)"
-                    />
-                  </el-option-group>
-                </el-select>
-              </el-form-item>
-              <div class="fc-grid">
-                <el-form-item :label="$t('modules.workflow.topKLabel')" required>
-                  <el-input-number
-                    v-model="item.top_k"
-                    :min="1"
-                    :max="80"
-                    :step="1"
-                    :precision="0"
-                    :aria-label="$t('modules.workflow.topKLabel')"
-                  />
-                </el-form-item>
-                <el-form-item
-                  v-if="operator.kwargs.strategy !== 0"
-                  :label="$t('knowledge.priority')"
-                >
-                  <el-input-number
-                    v-model="item.priority"
-                    :min="0"
-                    :max="10"
-                    :step="1"
-                    :precision="0"
-                    :aria-label="$t('knowledge.priority')"
-                  />
-                </el-form-item>
-                <el-form-item :label="$t('modules.workflow.minScore')">
-                  <el-input-number
-                    v-model="item.score"
-                    :min="0"
-                    :max="1"
-                    :step="0.01"
-                    :precision="2"
-                    :aria-label="$t('modules.workflow.minScore')"
-                  />
-                </el-form-item>
-              </div>
-            </section>
-            <el-button
-              v-if="operator.kwargs.knowledge_info_list.length < 50"
-              class="button-compact"
-              @click="addKb(operator.kwargs.knowledge_info_list)"
-            >
-              <Plus />{{ $t('modules.workflow.addSource') }}
-            </el-button>
-          </div>
-        </template>
-
-        <template v-else-if="operator.operator === 'KeywordRetriever'">
-          <el-form-item :label="$t('knowledge.knowledgeBase')" required>
-            <el-select
-              v-model="operator.kwargs.knowledge_base_name"
-              multiple
-              filterable
-              :placeholder="$t('knowledge.selectKnowledge')"
-              :aria-label="$t('knowledge.knowledgeBase')"
-            >
-              <el-option-group
-                v-for="group in allKBList"
-                :key="group.label"
-                :label="group.label"
-              >
-                <el-option
-                  v-for="option in group.options.filter(opt => !opt.value.includes('graph'))"
-                  :key="option.value"
-                  :label="option.label"
-                  :value="option.value"
-                  @click="kbOptionClickHandler(option.value, operator.kwargs.knowledge_base_name)"
-                />
-              </el-option-group>
-            </el-select>
-          </el-form-item>
-          <el-form-item :label="$t('modules.workflow.topKLabel')" required>
-            <el-input-number
-              v-model="operator.kwargs.top_k"
-              :min="1"
-              :max="80"
-              :step="1"
-              :precision="0"
-              :aria-label="$t('modules.workflow.topKLabel')"
-            />
-          </el-form-item>
-        </template>
-
-        <template v-else-if="operator.operator === 'KnowledgeGraphRetriever'">
-          <el-form-item :label="$t('knowledge.knowledgeBase')" required>
-            <el-select
-              v-model="operator.kwargs.knowledge_base_name"
-              multiple
-              filterable
-              :placeholder="$t('knowledge.selectKnowledge')"
-              :aria-label="$t('knowledge.knowledgeBase')"
-            >
-              <el-option-group
-                v-for="group in allKBList"
-                :key="group.label"
-                :label="group.label"
-              >
-                <el-option
-                  v-for="option in group.options.filter(opt => opt.value.includes('graph'))"
-                  :key="option.value"
-                  :label="option.label"
-                  :value="option.value"
-                  @click="kbOptionClickHandler(option.value, operator.kwargs.knowledge_base_name)"
-                />
-              </el-option-group>
-            </el-select>
-          </el-form-item>
-          <div class="fc-grid">
-            <el-form-item :label="$t('ragFlow.vectorModel')">
-              <el-input
-                :model-value="operator.kwargs.embedding"
-                disabled
-                :placeholder="$t('ragFlow.vectorModelPlc')"
-              />
-            </el-form-item>
-            <el-form-item :label="$t('modules.workflow.topKLabel')" required>
-              <el-input-number
-                v-model="operator.kwargs.top_k"
-                :min="1"
-                :max="80"
-                :step="1"
-                :precision="0"
-                :aria-label="$t('modules.workflow.topKLabel')"
-              />
-            </el-form-item>
-            <el-form-item :label="$t('knowledge.depth')">
-              <el-input-number
-                v-model="operator.kwargs.depth"
-                :min="1"
-                :max="10"
-                :step="1"
-                :precision="0"
-                :aria-label="$t('knowledge.depth')"
-              />
-            </el-form-item>
-            <el-form-item :label="$t('modules.workflow.minScore')">
-              <el-input-number
-                v-model="operator.kwargs.score"
-                :min="0"
-                :max="1"
-                :step="0.01"
-                :precision="2"
-                :aria-label="$t('modules.workflow.minScore')"
-              />
-            </el-form-item>
-          </div>
-          <el-form-item :label="$t('modules.workflow.includeEdgeFacts')">
-            <div class="fc-edge-facts">
-              <el-switch
-                v-model="operator.kwargs.include_edge_facts"
-                :aria-label="$t('modules.workflow.includeEdgeFacts')"
-              />
-              <span class="fc-edge-facts-hint">{{ $t('modules.workflow.includeEdgeFactsHint') }}</span>
+                <Delete />{{ $t('public.delete') }}
+              </button>
             </div>
-          </el-form-item>
-        </template>
+            <el-form-item :label="$t('knowledge.knowledgeBase')" required>
+              <el-select
+                v-model="item.knowledge_base_name"
+                multiple
+                filterable
+                :placeholder="$t('knowledge.selectKnowledge')"
+                :aria-label="$t('knowledge.knowledgeBase')"
+              >
+                <el-option-group
+                  v-for="group in (kbListWithModel[operator.kwargs.embedding] || [])"
+                  :key="group.label"
+                  :label="group.label"
+                >
+                  <el-option
+                    v-for="option in group.options.filter(opt => !opt.value.includes('graph'))"
+                    :key="option.value"
+                    :label="option.label"
+                    :value="option.value"
+                    @click="kbOptionClickHandler(option.value, item.knowledge_base_name)"
+                  />
+                </el-option-group>
+              </el-select>
+            </el-form-item>
+            <div class="fc-grid">
+              <el-form-item :label="$t('modules.workflow.topKLabel')" required>
+                <el-input-number
+                  v-model="item.top_k"
+                  :min="1"
+                  :max="80"
+                  :step="1"
+                  :precision="0"
+                  :aria-label="$t('modules.workflow.topKLabel')"
+                />
+              </el-form-item>
+              <el-form-item
+                v-if="operator.kwargs.strategy !== 0"
+                :label="$t('knowledge.priority')"
+              >
+                <el-input-number
+                  v-model="item.priority"
+                  :min="0"
+                  :max="10"
+                  :step="1"
+                  :precision="0"
+                  :aria-label="$t('knowledge.priority')"
+                />
+              </el-form-item>
+              <el-form-item :label="$t('modules.workflow.minScore')">
+                <el-input-number
+                  v-model="item.score"
+                  :min="0"
+                  :max="1"
+                  :step="0.01"
+                  :precision="2"
+                  :aria-label="$t('modules.workflow.minScore')"
+                />
+              </el-form-item>
+            </div>
+          </section>
+          <el-button
+            v-if="operator.kwargs.knowledge_info_list.length < 50"
+            class="button-compact"
+            @click="addKb(operator.kwargs.knowledge_info_list)"
+          >
+            <Plus />{{ $t('modules.workflow.addSource') }}
+          </el-button>
+        </div>
+      </template>
 
-        <template v-else>
-          <el-form-item :label="$t('modules.workflow.topKLabel')" required>
-            <el-input-number
-              v-model="operator.kwargs.top_k"
-              :min="1"
-              :max="80"
-              :step="1"
-              :precision="0"
-              :aria-label="$t('modules.workflow.topKLabel')"
-            />
-          </el-form-item>
-        </template>
-
-        <el-form-item :label="$t('ragFlow.operatorDesc')">
-          <el-input
-            v-model.trim="operator.kwargs.desc_info"
-            type="textarea"
-            :rows="3"
-            maxlength="512"
-            :placeholder="$t('ragFlow.operatorDescPlacehodler')"
-            :aria-label="$t('ragFlow.operatorDesc')"
+      <template v-else-if="operator.operator === 'KeywordRetriever'">
+        <el-form-item :label="$t('knowledge.knowledgeBase')" required>
+          <el-select
+            v-model="operator.kwargs.knowledge_base_name"
+            multiple
+            filterable
+            :placeholder="$t('knowledge.selectKnowledge')"
+            :aria-label="$t('knowledge.knowledgeBase')"
+          >
+            <el-option-group
+              v-for="group in allKBList"
+              :key="group.label"
+              :label="group.label"
+            >
+              <el-option
+                v-for="option in group.options.filter(opt => !opt.value.includes('graph'))"
+                :key="option.value"
+                :label="option.label"
+                :value="option.value"
+                @click="kbOptionClickHandler(option.value, operator.kwargs.knowledge_base_name)"
+              />
+            </el-option-group>
+          </el-select>
+        </el-form-item>
+        <el-form-item :label="$t('modules.workflow.topKLabel')" required>
+          <el-input-number
+            v-model="operator.kwargs.top_k"
+            :min="1"
+            :max="80"
+            :step="1"
+            :precision="0"
+            :aria-label="$t('modules.workflow.topKLabel')"
           />
         </el-form-item>
-      </el-form>
-    </OperatorSection>
-  </div>
+      </template>
+
+      <template v-else-if="operator.operator === 'KnowledgeGraphRetriever'">
+        <el-form-item :label="$t('knowledge.knowledgeBase')" required>
+          <el-select
+            v-model="operator.kwargs.knowledge_base_name"
+            multiple
+            filterable
+            :placeholder="$t('knowledge.selectKnowledge')"
+            :aria-label="$t('knowledge.knowledgeBase')"
+          >
+            <el-option-group
+              v-for="group in allKBList"
+              :key="group.label"
+              :label="group.label"
+            >
+              <el-option
+                v-for="option in group.options.filter(opt => opt.value.includes('graph'))"
+                :key="option.value"
+                :label="option.label"
+                :value="option.value"
+                @click="kbOptionClickHandler(option.value, operator.kwargs.knowledge_base_name)"
+              />
+            </el-option-group>
+          </el-select>
+        </el-form-item>
+        <div class="fc-grid">
+          <el-form-item :label="$t('ragFlow.vectorModel')">
+            <el-input
+              :model-value="operator.kwargs.embedding"
+              disabled
+              :placeholder="$t('ragFlow.vectorModelPlc')"
+            />
+          </el-form-item>
+          <el-form-item :label="$t('modules.workflow.topKLabel')" required>
+            <el-input-number
+              v-model="operator.kwargs.top_k"
+              :min="1"
+              :max="80"
+              :step="1"
+              :precision="0"
+              :aria-label="$t('modules.workflow.topKLabel')"
+            />
+          </el-form-item>
+          <el-form-item :label="$t('knowledge.depth')">
+            <el-input-number
+              v-model="operator.kwargs.depth"
+              :min="1"
+              :max="10"
+              :step="1"
+              :precision="0"
+              :aria-label="$t('knowledge.depth')"
+            />
+          </el-form-item>
+          <el-form-item :label="$t('modules.workflow.minScore')">
+            <el-input-number
+              v-model="operator.kwargs.score"
+              :min="0"
+              :max="1"
+              :step="0.01"
+              :precision="2"
+              :aria-label="$t('modules.workflow.minScore')"
+            />
+          </el-form-item>
+        </div>
+        <el-form-item :label="$t('modules.workflow.includeEdgeFacts')">
+          <div class="fc-edge-facts">
+            <el-switch
+              v-model="operator.kwargs.include_edge_facts"
+              :aria-label="$t('modules.workflow.includeEdgeFacts')"
+            />
+            <span class="fc-edge-facts-hint">{{ $t('modules.workflow.includeEdgeFactsHint') }}</span>
+          </div>
+        </el-form-item>
+      </template>
+
+      <template v-else>
+        <el-form-item :label="$t('modules.workflow.topKLabel')" required>
+          <el-input-number
+            v-model="operator.kwargs.top_k"
+            :min="1"
+            :max="80"
+            :step="1"
+            :precision="0"
+            :aria-label="$t('modules.workflow.topKLabel')"
+          />
+        </el-form-item>
+      </template>
+
+      <el-form-item :label="$t('ragFlow.operatorDesc')">
+        <el-input
+          v-model.trim="operator.kwargs.desc_info"
+          type="textarea"
+          :rows="3"
+          maxlength="512"
+          :placeholder="$t('ragFlow.operatorDescPlacehodler')"
+          :aria-label="$t('ragFlow.operatorDesc')"
+        />
+      </el-form-item>
+    </template>
+  </OperatorDrawerShell>
 </template>
 
 <script setup>
-import { computed, getCurrentInstance, onMounted, ref } from 'vue'
+// 表单骨架（载入 / 列表操作 / 校验提交）在 modules/shared/useOperatorDrawer.js，
+// 这里只留检索器独有的来源选择、部署环境探测与校验。
+import { getCurrentInstance, ref } from 'vue'
 import { getModelList } from '@/features/model/api/models'
 import { getAllKBList } from '@/features/workflow/api/workflow'
-import { defaultTopkMapper } from '@/features/workflow/lib/workflow'
 import { uniqueKbNames } from '@/features/workflow/lib/kbSelection'
 import { KB_NAME_PREFIX } from '@/shared/constants/index.js'
-import { useCustomOperator } from '@/features/workflow/modules/useCustomOperator.js'
-import JsonEditorVue from 'json-editor-vue'
-import { theme } from '@/shared/lib/theme'
-import { ArrowDown, Delete, Plus, Document, Share, Coin } from '@/shared/lib/icons'
+import { Delete, Plus, Document, Share, Coin } from '@/shared/lib/icons'
 import { operatorSourceMismatch, sourceKindMeta, sourceKindOfOperator } from '@/features/workflow/lib/retrievalSources'
 import { KB_PUBLISH_STATUS, KB_OPTION_KEY_HYPHEN } from '@/features/knowledge-base/constants.js'
 import { useKbOptions } from '@/features/knowledge-base/composables/useKbOptions.ts'
 import message from '@/shared/lib/message'
-import { checkEnvironmentApi } from '@/features/knowledge-base/api/kbaseApi.js'
-import OperatorSection from '@/features/workflow/OperatorSection.vue'
+// 跨 feature 一律走 knowledge-base 的公共出口（api/index.js）
+import { checkEnvironmentApi } from '@/features/knowledge-base/api'
+import { getDefaultTopKWithType, useOperatorDrawer } from '@/features/workflow/modules/shared/useOperatorDrawer.js'
+import OperatorDrawerShell from '@/features/workflow/modules/shared/OperatorDrawerShell.vue'
 
 const { transKbsToPublishedOptions, kbOptionClickHandler } = useKbOptions()
 
-const aipVueInstance = window.aipVueInstance
 const { proxy } = getCurrentInstance()
-const operatorList = ref([])
-const builtinOperatorList = ref([])
-let sequence = 0
 
 const VectorRetrieverOperatorId = 'VectorRetriever'
 const KeywordRetrieverOperatorId = 'KeywordRetriever'
@@ -359,21 +306,8 @@ const props = defineProps({
 })
 const emit = defineEmits(['config-error', 'operator-count'])
 
-const disableAddOperator = computed(() => operatorList.value.some(item => SqlOperatorNames.includes(item?.operator)))
-
-const { generateRandomUUID } = useCustomOperator(proxy, {
-  props,
-  type: 'retriever',
-  operatorList,
-  showAddOperatorPopover: ref(false)
-})
-
-function editable (operator) {
-  return {
-    ...JSON.parse(JSON.stringify(operator)),
-    _key: `op-${++sequence}`,
-    _collapsed: false
-  }
+function isKnownOperator (operator) {
+  return [VectorRetrieverOperatorId, KeywordRetrieverOperatorId, KnowledgeGraphRetrieverOperatorId, FusionRetrieverOperatorId].includes(operator.operator)
 }
 
 function updateBuiltinOperatorList () {
@@ -383,7 +317,7 @@ function updateBuiltinOperatorList () {
     { name: proxy.$t('ragFlow.KnowledgeGraphRetrieverOperator'), id: KnowledgeGraphRetrieverOperatorId },
     { name: proxy.$t('ragFlow.FusionRetrieverOperator'), id: FusionRetrieverOperatorId }
   ]
-  builtinOperatorList.value = showKnowledgeGraphRetriever.value
+  return showKnowledgeGraphRetriever.value
     ? baseList
     : baseList.filter(item => item.id !== KnowledgeGraphRetrieverOperatorId)
 }
@@ -392,7 +326,7 @@ function handleDeploymentEnvironmentCheck (res) {
   const deployedBy = res?.DEPLOYED_BY || res?.deployedBy
   // okiv5 部署没有图谱检索能力
   showKnowledgeGraphRetriever.value = deployedBy !== 'okiv5'
-  updateBuiltinOperatorList()
+  drawer.refreshBuiltinOperators()
 }
 
 function checkDeploymentEnvironment () {
@@ -400,93 +334,9 @@ function checkDeploymentEnvironment () {
     .then(handleDeploymentEnvironmentCheck)
     .catch(() => {
       showKnowledgeGraphRetriever.value = true
-      updateBuiltinOperatorList()
+      drawer.refreshBuiltinOperators()
     })
 }
-
-onMounted(() => {
-  const source = JSON.parse(JSON.stringify(props.formData.retriever || []))
-  source.forEach(item => {
-    item.kwargs = item.kwargs || {}
-    if (item.operator === VectorRetrieverOperatorId) {
-      if (!Array.isArray(item.kwargs.knowledge_info_list) || !item.kwargs.knowledge_info_list.length) {
-        item.kwargs.knowledge_info_list = [{ knowledge_base_name: [], priority: 10, top_k: 8, score: 0.3 }]
-      }
-      item.kwargs.knowledge_info_list.forEach(kb => {
-        if (!kb.priority) {
-          kb.priority = undefined
-        }
-        if (!Array.isArray(kb.knowledge_base_name)) {
-          kb.knowledge_base_name = kb.knowledge_base_name ? [kb.knowledge_base_name] : []
-        }
-        // 历史配置里同一个库会重复出现：不去重的话标签的 × 只删掉一份，看起来像删不掉
-        kb.knowledge_base_name = uniqueKbNames(kb.knowledge_base_name)
-        if (kb.top_k === undefined) {
-          kb.top_k = 8
-        }
-        if (kb.score === undefined) {
-          kb.score = 0.3
-        }
-      })
-    }
-    if (item.operator === KeywordRetrieverOperatorId || item.operator === FusionRetrieverOperatorId) {
-      if (item.operator === KeywordRetrieverOperatorId) {
-        if (!Array.isArray(item.kwargs.knowledge_base_name)) {
-          item.kwargs.knowledge_base_name = item.kwargs.knowledge_base_name ? [item.kwargs.knowledge_base_name] : []
-        }
-        item.kwargs.knowledge_base_name = uniqueKbNames(item.kwargs.knowledge_base_name)
-      }
-      if (item.kwargs.top_k === undefined) {
-        item.kwargs.top_k = 8
-      }
-    }
-    if (item.operator === KnowledgeGraphRetrieverOperatorId) {
-      if (typeof item.kwargs.knowledge_base_name === 'string') {
-        item.kwargs.knowledge_base_name = item.kwargs.knowledge_base_name ? [item.kwargs.knowledge_base_name] : []
-      } else if (!Array.isArray(item.kwargs.knowledge_base_name)) {
-        item.kwargs.knowledge_base_name = []
-      }
-      item.kwargs.knowledge_base_name = uniqueKbNames(item.kwargs.knowledge_base_name)
-      if (!Object.prototype.hasOwnProperty.call(item.kwargs, 'depth')) {
-        item.kwargs.depth = 1
-      }
-      if (!Object.prototype.hasOwnProperty.call(item.kwargs, 'score')) {
-        item.kwargs.score = 0
-      }
-      if (!Object.prototype.hasOwnProperty.call(item.kwargs, 'embedding')) {
-        item.kwargs.embedding = ''
-      }
-    }
-  })
-  operatorList.value = source.map(editable)
-  emit('operator-count', operatorList.value.length)
-
-  kbRetrieveStrategyList.value = [
-    { name: proxy.$t('knowledge.retrieveAll'), value: 0 },
-    { name: proxy.$t('knowledge.retrieveWithPriority'), value: 1 }
-  ]
-  updateBuiltinOperatorList()
-  checkDeploymentEnvironment()
-
-  getModelList().then(res => {
-    if (isObjectArray(res)) {
-      vectorModelList.value = res
-    } else if (isStringArray(res)) {
-      vectorModelList.value = res.map(item => ({ modelName: item }))
-    }
-    vectorModelList.value.forEach(item => {
-      getAllKBList({ embedding: item.modelName }).then(response => {
-        kbListWithModel.value[item.modelName] = transKbsToPublishedOptions(response)
-        resolveVectorKbNames()
-      }).catch(() => {})
-    })
-  })
-
-  getAllKBList().then(res => {
-    allKBList.value = transKbsToPublishedOptions(res)
-    resolveKeywordKbNames()
-  })
-})
 
 function isObjectArray (arr) {
   return Array.isArray(arr) && arr.every(item => typeof item === 'object')
@@ -497,7 +347,7 @@ function isStringArray (arr) {
 }
 
 function resolveVectorKbNames () {
-  operatorList.value.forEach(item => {
+  drawer.operatorList.forEach(item => {
     if (item.operator !== VectorRetrieverOperatorId || !item.kwargs?.knowledge_info_list) {
       return
     }
@@ -510,7 +360,7 @@ function resolveVectorKbNames () {
 }
 
 function resolveKeywordKbNames () {
-  operatorList.value.forEach(item => {
+  drawer.operatorList.forEach(item => {
     if (item.operator === KeywordRetrieverOperatorId && item.kwargs?.knowledge_base_name) {
       item.kwargs.knowledge_base_name = uniqueKbNames(
         item.kwargs.knowledge_base_name.map(name => resolveKbName(name, allKBList.value)))
@@ -541,17 +391,6 @@ function vectorModelOptionsFor () {
     value: model.modelName
   }))
   return options
-}
-
-function getDefaultTopKWithType (operatorType) {
-  const type = aipVueInstance.$store.state.ragWorkflowType
-  if (type === 'BlendedQueryEngine') {
-    return defaultTopkMapper[operatorType].BlendedQueryEngine
-  }
-  if (type === 'SequentialQueryEngine') {
-    return defaultTopkMapper[operatorType].SequentialQueryEngine
-  }
-  return defaultTopkMapper[operatorType].ConditionalQueryEngine
 }
 
 function buildOperator (id) {
@@ -627,7 +466,7 @@ function seedOperatorSources (operator) {
   if (!kind) {
     return
   }
-  const peer = operatorList.value.find(item => (
+  const peer = drawer.operatorList.find(item => (
     sourceKindOfOperator(item.operator) === kind && operatorHasSources(item)
   ))
   if (!peer) {
@@ -652,50 +491,6 @@ function seedOperatorSources (operator) {
   }
 }
 
-function addOperatorWithType (id) {
-  const next = buildOperator(id)
-  seedOperatorSources(next)
-  operatorList.value.push(editable({
-    id: `${props.nodeId}_${generateRandomUUID()}`,
-    ...next
-  }))
-  emit('operator-count', operatorList.value.length)
-
-}
-
-function changeOperator (operator, id) {
-  if (!id || operator.operator === id) {
-    return
-  }
-  const hadSources = operatorHasSources(operator)
-  const next = buildOperator(id)
-  operator.operator = next.operator
-  operator.package = next.package
-  operator.kwargs = next.kwargs
-  // 换了算子就是换了来源类型：旧库已清空，提示用户重新选择（选中后提示自动消失）
-  const kind = sourceKindOfOperator(id)
-  operator._sourceNotice = hadSources && kind
-    ? proxy.$t('modules.workflow.sourceSwitchedNotice', { kind: proxy.$t(sourceKindMeta(kind).labelKey) })
-    : ''
-}
-
-function move (index, delta) {
-  const target = index + delta
-  if (target < 0 || target >= operatorList.value.length) {
-    return
-  }
-  const [operator] = operatorList.value.splice(index, 1)
-  operatorList.value.splice(target, 0, operator)
-}
-
-function remove (index) {
-  if (operatorList.value.length <= 1) {
-    return
-  }
-  operatorList.value.splice(index, 1)
-  emit('operator-count', operatorList.value.length)
-}
-
 function addKb (list) {
   list.push({
     knowledge_base_name: [],
@@ -709,16 +504,6 @@ function deleteKb (list, index) {
   list.splice(index, 1)
 }
 
-function isKnownOperator (operator) {
-  return [VectorRetrieverOperatorId, KeywordRetrieverOperatorId, KnowledgeGraphRetrieverOperatorId, FusionRetrieverOperatorId].includes(operator.operator)
-}
-
-function displayName (operator) {
-  return operator?.custom
-    ? operator.operatorName
-    : proxy.$t(`ragFlow.${operator.operator}Operator`)
-}
-
 function removeKbNameSuffix (kbName) {
   if (typeof kbName === 'string' && kbName.includes(KB_OPTION_KEY_HYPHEN)) {
     return kbName.split(KB_OPTION_KEY_HYPHEN)[0]
@@ -730,8 +515,9 @@ function processKbNameArray (names) {
   return (names || []).map(name => removeKbNameSuffix(String(name)))
 }
 
-function sendOperatorListData () {
-  operatorList.value.forEach(item => {
+/** 提交前的就地收敛：只对已知算子的知识库键做归一（原样保留奇形怪状的老值）。 */
+function normalizeOperatorKwargsForSubmit () {
+  drawer.operatorList.forEach(item => {
     if (item.operator === KnowledgeGraphRetrieverOperatorId) {
       if (typeof item.kwargs.knowledge_base_name === 'string') {
         item.kwargs.knowledge_base_name = item.kwargs.knowledge_base_name
@@ -756,16 +542,6 @@ function sendOperatorListData () {
       item.kwargs.knowledge_base_name = uniqueKbNames(processKbNameArray(item.kwargs.knowledge_base_name))
     }
   })
-  const list = operatorList.value.map(operator => {
-    const copy = JSON.parse(JSON.stringify(operator))
-    // 抽屉内部状态不落库（_key/_collapsed 只是渲染用，提示在选中来源后自动消失）
-    ;['_key', '_collapsed', 'showConfig', '_sourceNotice'].forEach(key => Reflect.deleteProperty(copy, key))
-    if (copy.kwargs?.knowledge_info_list) {
-      copy.kwargs.knowledge_info_list.forEach(item => Reflect.deleteProperty(item, 'showConfig'))
-    }
-    return copy
-  })
-  return { retriever: list }
 }
 
 function extractTableName (kbName) {
@@ -812,7 +588,7 @@ function validateAndStoreKnowledgeBaseNames () {
   const notFoundKBNames = []
   const missingModels = []
   const modelMismatchNames = []
-  operatorList.value.forEach(operator => {
+  drawer.operatorList.forEach(operator => {
     if (operator.custom || !isKnownOperator(operator) || operator.operator === 'FusionRetriever') {
       return
     }
@@ -859,7 +635,7 @@ function validateOperator (operator) {
   const kind = sourceKindOfOperator(operator)
   if (kind && operatorSourceMismatch(operator).length) {
     return proxy.$t('modules.workflow.sourceKindMismatch', {
-      operator: displayName(operator),
+      operator: drawer.displayName(operator),
       kind: proxy.$t(sourceKindMeta(kind).labelKey)
     })
   }
@@ -913,24 +689,123 @@ function validateOperator (operator) {
   return ''
 }
 
-function validate () {
-  return callback => {
-    if (!validateAndStoreKnowledgeBaseNames()) {
-      callback(false)
-      return
+const drawer = useOperatorDrawer({
+  props,
+  emit,
+  type: 'retriever',
+  formDataKey: 'retriever',
+  // 有 SQL 算子在列时不再让新增（SQL 节点的参数不归本抽屉管）
+  isAddDisabled: list => list.some(item => SqlOperatorNames.includes(item?.operator)),
+  builtinOperators: updateBuiltinOperatorList,
+  buildOperator,
+  isKnownOperator,
+  validateOperator,
+  beforeValidate: validateAndStoreKnowledgeBaseNames,
+  normalizeItem (item) {
+    item.kwargs = item.kwargs || {}
+    if (item.operator === VectorRetrieverOperatorId) {
+      if (!Array.isArray(item.kwargs.knowledge_info_list) || !item.kwargs.knowledge_info_list.length) {
+        item.kwargs.knowledge_info_list = [{ knowledge_base_name: [], priority: 10, top_k: 8, score: 0.3 }]
+      }
+      item.kwargs.knowledge_info_list.forEach(kb => {
+        if (!kb.priority) {
+          kb.priority = undefined
+        }
+        if (!Array.isArray(kb.knowledge_base_name)) {
+          kb.knowledge_base_name = kb.knowledge_base_name ? [kb.knowledge_base_name] : []
+        }
+        // 历史配置里同一个库会重复出现：不去重的话标签的 × 只删掉一份，看起来像删不掉
+        kb.knowledge_base_name = uniqueKbNames(kb.knowledge_base_name)
+        if (kb.top_k === undefined) {
+          kb.top_k = 8
+        }
+        if (kb.score === undefined) {
+          kb.score = 0.3
+        }
+      })
     }
-    for (const operator of operatorList.value) {
-      const error = validateOperator(operator)
-      if (error) {
-        operator._collapsed = false
-        emit('config-error', `${displayName(operator)}：${error}`)
-        callback(false)
-        return
+    if (item.operator === KeywordRetrieverOperatorId || item.operator === FusionRetrieverOperatorId) {
+      if (item.operator === KeywordRetrieverOperatorId) {
+        if (!Array.isArray(item.kwargs.knowledge_base_name)) {
+          item.kwargs.knowledge_base_name = item.kwargs.knowledge_base_name ? [item.kwargs.knowledge_base_name] : []
+        }
+        item.kwargs.knowledge_base_name = uniqueKbNames(item.kwargs.knowledge_base_name)
+      }
+      if (item.kwargs.top_k === undefined) {
+        item.kwargs.top_k = 8
       }
     }
-    emit('config-error', '')
-    callback(true)
+    if (item.operator === KnowledgeGraphRetrieverOperatorId) {
+      if (typeof item.kwargs.knowledge_base_name === 'string') {
+        item.kwargs.knowledge_base_name = item.kwargs.knowledge_base_name ? [item.kwargs.knowledge_base_name] : []
+      } else if (!Array.isArray(item.kwargs.knowledge_base_name)) {
+        item.kwargs.knowledge_base_name = []
+      }
+      item.kwargs.knowledge_base_name = uniqueKbNames(item.kwargs.knowledge_base_name)
+      if (!Object.prototype.hasOwnProperty.call(item.kwargs, 'depth')) {
+        item.kwargs.depth = 1
+      }
+      if (!Object.prototype.hasOwnProperty.call(item.kwargs, 'score')) {
+        item.kwargs.score = 0
+      }
+      if (!Object.prototype.hasOwnProperty.call(item.kwargs, 'embedding')) {
+        item.kwargs.embedding = ''
+      }
+    }
+  },
+  afterLoad () {
+    kbRetrieveStrategyList.value = [
+      { name: proxy.$t('knowledge.retrieveAll'), value: 0 },
+      { name: proxy.$t('knowledge.retrieveWithPriority'), value: 1 }
+    ]
+    checkDeploymentEnvironment()
+
+    getModelList().then(res => {
+      if (isObjectArray(res)) {
+        vectorModelList.value = res
+      } else if (isStringArray(res)) {
+        vectorModelList.value = res.map(item => ({ modelName: item }))
+      }
+      vectorModelList.value.forEach(item => {
+        getAllKBList({ embedding: item.modelName }).then(response => {
+          kbListWithModel.value[item.modelName] = transKbsToPublishedOptions(response)
+          resolveVectorKbNames()
+        }).catch(() => {})
+      })
+    })
+
+    getAllKBList().then(res => {
+      allKBList.value = transKbsToPublishedOptions(res)
+      resolveKeywordKbNames()
+    })
+  },
+  seedNewOperator: seedOperatorSources,
+  beforeOperatorChange: operatorHasSources,
+  afterOperatorChange (operator, id, hadSources) {
+    // 换了算子就是换了来源类型：旧库已清空，提示用户重新选择（选中后提示自动消失）
+    const kind = sourceKindOfOperator(id)
+    operator._sourceNotice = hadSources && kind
+      ? proxy.$t('modules.workflow.sourceSwitchedNotice', { kind: proxy.$t(sourceKindMeta(kind).labelKey) })
+      : ''
+  },
+  beforeSend: normalizeOperatorKwargsForSubmit,
+  serializeOperator (operator) {
+    const copy = JSON.parse(JSON.stringify(operator))
+    // 抽屉内部状态不落库（_key/_collapsed 只是渲染用，提示在选中来源后自动消失）
+    ;['_key', '_collapsed', 'showConfig', '_sourceNotice'].forEach(key => Reflect.deleteProperty(copy, key))
+    if (copy.kwargs?.knowledge_info_list) {
+      copy.kwargs.knowledge_info_list.forEach(item => Reflect.deleteProperty(item, 'showConfig'))
+    }
+    return copy
   }
+})
+
+function validate () {
+  return drawer.validate()
+}
+
+function sendOperatorListData () {
+  return drawer.sendOperatorListData()
 }
 
 defineExpose({
@@ -940,9 +815,6 @@ defineExpose({
 </script>
 
 <style lang="less" scoped>
-.ai-json-editor--drawer {
-  height: 300px;
-}
 .fc-edge-facts {
   display: flex;
   align-items: center;

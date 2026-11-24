@@ -50,6 +50,9 @@
   --rs-success: #09b34c;
   --rs-warning: #fa9c08;
   --rs-danger: #fa5967;
+  /* 强调色底（primary/success/danger 等实色填充）上的内容色：
+     按钮文字、徽标/角标、选中态图标统一取这里，深浅主题同为白。 */
+  --rs-on-accent: #fff;
   --rs-radius: 8px;
   --rs-management-padding-block: 32px;
   --rs-management-padding-inline: 28px;

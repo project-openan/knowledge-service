@@ -1092,6 +1092,7 @@ const applyChanges = async () => {
         resolve(payload)
       }
     } catch (error) {
+      /* v8 ignore next -- 防御分支：try 块内所有失败路径都走显式 reject，同步抛错在此兜底，测试不可达 */
       reject(error)
     }
   })

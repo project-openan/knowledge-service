@@ -1,11 +1,19 @@
 import os
 import shutil
 
-from parsing.common.logutil import log
+from infrastructure.logging.logutil import log
 
 
 def get_workdir():
-    return os.path.dirname(os.path.dirname(__file__))
+    """运行时工作目录：统一走 infrastructure 的 ``work_dir``（env ``WORK_DIR`` 可覆写）。
+
+    历史上这里返回解析包的**源码目录**（``src/parsing``），运行期 temp 产物
+    （html/pptx 转 md、语料切片）会写进源码树 ``src/parsing/temp``；本地跑过
+    Compose 后还留下 root 属主目录，让后续测试写不进去。现在与
+    ``infrastructure/config/settings`` 的落盘根同源。
+    """
+    from infrastructure.fs.paths import get_work_dir
+    return get_work_dir()
 
 
 def create_parent_dir_all_path(file_path):

@@ -4,14 +4,12 @@ import 'regenerator-runtime/runtime';
 import App from './App.vue'
 import routerConfigs from './router.js'
 import { store } from '@/app/store'
-// import i18nConfig from '@/app/i18n'
 import i18n, { locale, $t, isGlobalZh } from '@/app/i18n/i18n.js'
 
 import directives from '@/app/directives/index'
 
 import { createApp } from 'vue'
 import ElementPlus, { ElMessage, ElMessageBox } from 'element-plus';
-// import * as ElementPlusIconsVue from '@/shared/lib/icons';
 import zh from 'element-plus/es/locale/lang/zh-cn';
 import en from 'element-plus/es/locale/lang/en';
 import 'element-plus/dist/index.css'
@@ -43,14 +41,6 @@ import { createRouter, createWebHashHistory, createWebHistory } from 'vue-router
 import { initSession } from '@/features/auth/session'
 import { installAuthGuard } from '@/features/auth/guard'
 import { installRouteProgress } from '@/shared/lib/route-progress'
-
-
-// const originalPush = VueRouter.prototype.push
-// // 解决VeinUIPlus导航栏中的vue-router在3.0版本以上重复点菜单报错问题
-// VueRouter.prototype.push = function push (location) {
-//   return originalPush.call(this, location).catch(err => err)
-// }
-
 
 let app = null
 
@@ -84,11 +74,6 @@ installRouteProgress(router)
 initSession(router)
 installAuthGuard(router)
 
-
-/* 国际化信息处理 */
-// UniWork默认语言参数是zh-CN | en-US，适配不同平台，语言格式可能不同，可以只取前两个字符
-// const { zh, en } = window.VeinUiPlusLocale
-
 // 主题必须在挂载前生效：EP 的深色变量读 html.dark，首屏不能先亮后暗。
 initializeTheme()
 
@@ -96,6 +81,7 @@ app = createApp(App)
 app.use(router)
 
 app.use(ElementPlus, {
+  // 语言格式可能因宿主平台而异（zh-CN | en-US 等），只取前两个字符判断
   locale: locale.substring(0, 2) === 'zh' ? zh : en
   // Use default-size components with --el-component-size:40px.
   // A global `size: 'large'` adds `--large` classes and changes dropdown/control

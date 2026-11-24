@@ -45,3 +45,21 @@ exclude = [
 # 保守集：语法/未定义名/未使用符号（E9 + F 族）+ 少量 E4/E7。
 # 刻意不开 isort(I) / pyupgrade(UP) / bugbear(B) / 行宽等会大范围重排的规则。
 select = ["E4", "E7", "E9", "F"]
+
+# ============================================================================
+# 覆盖率配置（pytest-cov）
+# 用法（工作目录 = backend）：
+#     python -m pytest tests src/ingestion/tests --cov=src --cov-report=term
+#     python -m pytest tests src/ingestion/tests --cov=src --cov-fail-under=95
+# ============================================================================
+[tool.coverage.run]
+source = ["src"]
+# tiktoken 词表缓存（primitives/_static）是数据文件目录，其中只有 README 没有 .py，
+# coverage 不会统计；无需额外 omit。
+
+[tool.coverage.report]
+# 目标：全量（含 engine 遗留运行时）行覆盖 ≥95%。
+# 例外必须用 `# pragma: no cover` 并在 PR 里说明理由，不允许「为达标而标」。
+fail_under = 95
+show_missing = true
+skip_covered = true

@@ -151,7 +151,7 @@ class RouterQueryEngine(RagQueryEngine):
             if len(responses) > 1:
                 final_response = combine_responses(self._summarizer, responses, query_bundle)
             else:
-                final_response = responses[0]
+                final_response = responses[0]  # pragma: no cover - 不可达防御：responses 与 result.inds 等长（恒 >1）
         else:
             try:
                 selected_query_engine = self._query_engines[result.ind]

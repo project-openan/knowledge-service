@@ -20,6 +20,16 @@ def test_app_boots_and_health_is_public_text(client):
     assert response.text == 'ok'
 
 
+def test_auth_endpoints_are_mounted_under_the_api_prefix(client):
+    status = client.get(f'{RKB_PREFIX}/auth/status')
+    assert status.status_code == 200
+    assert status.json()['mode'] == 'none'
+
+    login = client.post(f'{RKB_PREFIX}/auth/login', json={})
+    assert login.status_code == 409
+    assert login.json()['code'] == 'auth_not_enabled'
+
+
 def test_unknown_path_returns_problem_envelope(client):
     response = client.get(f'{RKB_PREFIX}/no/such/route')
 

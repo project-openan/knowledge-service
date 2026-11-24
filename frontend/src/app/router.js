@@ -27,7 +27,7 @@ const GraphTemplateDesigner = () => import(/* webpackChunkName: "module.graph" *
 
 // 检索编排（画布 + 列表）
 // 后端 /api/knowledge-service/v1 提供接口。
-const CustomizedAdvancedFlow = () => import(/* webpackChunkName: "module.flow" */'@/pages/workflow/WorkflowEditorPage.vue');
+const CustomizedAdvancedFlow = () => import(/* webpackChunkName: "module.flow" */'@/features/workflow/pages/WorkflowEditorPage.vue');
 const WorkFlowIndex = () => import(/* webpackChunkName: "module.flow" */'@/pages/workflow/WorkflowListPage.vue');
 // 对话测试页（视图 + lib + composables）
 const ChatTest = () => import(/* webpackChunkName: "module.flow" */'@/pages/chat/ChatPage.vue');
