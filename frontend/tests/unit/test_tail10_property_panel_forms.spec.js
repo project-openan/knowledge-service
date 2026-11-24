@@ -15,7 +15,8 @@
  * - 输入事件触发的字段级校验入口（validateNodeName / validateEdgeType / 属性行字段）；
  * - resetForm；X6 节点无 getData() 时回落 .data。
  */
-import { describe, expect, it, vi, beforeEach } from 'vitest'
+import { describe, expect, it, vi, beforeEach, afterEach } from 'vitest'
+import { enableAutoUnmount } from '@vue/test-utils'
 
 import { ElCollapse, ElCollapseItem } from 'element-plus/es/components/collapse/index'
 import { ElFormItem } from 'element-plus/es/components/form/index'
@@ -108,6 +109,8 @@ beforeEach(() => {
   messageWarning.mockClear()
   document.body.innerHTML = ''
 })
+
+enableAutoUnmount(afterEach)
 
 describe('PropertyPanel：真渲染（Element Plus 真件）', () => {
   it('未选中：渲染空态提示，不渲染任何表单', async () => {
@@ -253,17 +256,20 @@ describe('PropertyPanel：属性 tab 的新增 / 删除 / 上限', () => {
 
   it('属性到达 100 上限：新增被拦下并弹 warning', async () => {
     const wrapper = await mountPanel({ selectedItem: NODE_ITEM, itemType: 'node' })
+    const original = wrapper.vm.nodeForm.properties
     wrapper.vm.nodeForm.properties = Array.from({ length: 100 }, (_, i) => ({
       __key: `k${i}`, name: `p${i}`, type: 'STRING', desc: 'd'
     }))
-    await flush()
 
+    // 上限检查同步返回，在 Vue 渲染前恢复表单，避免挂载 100 组无关控件。
     wrapper.vm.handlePropTabsEdit('x', 'add')
+    const propertyCount = wrapper.vm.nodeForm.properties.length
+    wrapper.vm.nodeForm.properties = original
     await flush()
-    expect(wrapper.vm.nodeForm.properties).toHaveLength(100)
+    expect(propertyCount).toBe(100)
     expect(messageWarning).toHaveBeenCalledTimes(1)
     expect(wrapper.vm.isAddingNodePropTab).toBe(false)
-  }, 20000) // 100 个真 tab-pane（各含 19 项的类型下拉）渲染慢，放宽超时
+  })
 
   it('删除当前激活页签：激活态移到相邻页签，行被移除', async () => {
     const wrapper = await mountPanel({ selectedItem: NODE_ITEM, itemType: 'node' })
@@ -293,22 +299,25 @@ describe('PropertyPanel：属性 tab 的新增 / 删除 / 上限', () => {
     expect(wrapper.vm.edgeForm.properties).toHaveLength(2)
     expect(wrapper.vm.isAddingEdgePropTab).toBe(false)
 
+    const original = wrapper.vm.edgeForm.properties
     wrapper.vm.edgeForm.properties = Array.from({ length: 100 }, (_, i) => ({
       __key: `e${i}`, name: `p${i}`, type: 'STRING', desc: 'd'
     }))
-    await flush()
     wrapper.vm.handleEdgePropTabsEdit('x', 'add')
+    const propertyCount = wrapper.vm.edgeForm.properties.length
+    wrapper.vm.edgeForm.properties = original
     await flush()
-    expect(wrapper.vm.edgeForm.properties).toHaveLength(100)
+    expect(propertyCount).toBe(100)
     expect(messageWarning).toHaveBeenCalledTimes(1)
 
-    wrapper.vm.activeEdgePropTabName = 'e0'
+    const [activeKey, nextKey] = original.map(property => property.__key)
+    wrapper.vm.activeEdgePropTabName = activeKey
     await flush()
-    wrapper.vm.handleEdgePropTabsEdit('e0', 'remove')
+    wrapper.vm.handleEdgePropTabsEdit(activeKey, 'remove')
     await flush()
-    expect(wrapper.vm.edgeForm.properties.map(p => p.__key)).not.toContain('e0')
-    expect(wrapper.vm.activeEdgePropTabName).toBe('e1')
-  }, 20000) // 同上：100 个真 tab-pane 渲染慢
+    expect(wrapper.vm.edgeForm.properties.map(p => p.__key)).toEqual([nextKey])
+    expect(wrapper.vm.activeEdgePropTabName).toBe(nextKey)
+  })
 
   it('真渲染路径：点击「添加标签页」按钮同样走 handlePropTabsEdit', async () => {
     const wrapper = await mountPanel({ selectedItem: NODE_ITEM, itemType: 'node' })

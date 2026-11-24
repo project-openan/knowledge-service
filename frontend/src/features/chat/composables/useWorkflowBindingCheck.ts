@@ -5,7 +5,7 @@
  * 以及失败时**放行**（fail-open —— 校验本身不该把对话页拦死）。
  */
 import { onMounted, ref, watch, type Ref } from 'vue'
-import { getAllStatusKbase, getPublishedFlowConfig } from '@/features/workflow/api/workflow'
+import { getAllStatusKbase, getPublishedFlowConfig } from '@/features/workflow/api'
 import { collectBoundKbNames, findMissingKbNames, type KbBindingOption } from '@/features/chat/lib/kb-bindings'
 
 export interface WorkflowBindingCheckApi {

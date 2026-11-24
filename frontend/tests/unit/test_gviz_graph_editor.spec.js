@@ -280,7 +280,7 @@ describe('NodePalette.vue', () => {
 })
 
 describe('ToolBar.vue', () => {
-  async function mountBar (templateName) {
+  async function mountBar (templateName, hide = vi.fn()) {
     return mountWithPlugins(ToolBar, {
       router: null,
       props: { templateName },
@@ -289,7 +289,8 @@ describe('ToolBar.vue', () => {
           ElPopover: {
             name: 'ElPopover',
             props: ['trigger'],
-            setup (_, { slots }) {
+            setup (_, { slots, expose }) {
+              expose({ hide })
               return () => h('div', { class: 'popover-stub' }, slots.reference?.(), slots.default?.())
             }
           },
@@ -324,7 +325,8 @@ describe('ToolBar.vue', () => {
   })
 
   it('返回按钮 emit go-back；删除确认 emit delete', async () => {
-    const wrapper = await mountBar()
+    const hide = vi.fn()
+    const wrapper = await mountBar(undefined, hide)
 
     await wrapper.find('.back-btn').trigger('click')
     expect(wrapper.emitted('go-back')).toHaveLength(1)
@@ -336,6 +338,7 @@ describe('ToolBar.vue', () => {
     expect(confirmBtn).toBeTruthy()
     await confirmBtn.trigger('click')
     expect(wrapper.emitted('delete')).toHaveLength(1)
+    expect(hide).toHaveBeenCalledOnce()
   })
 })
 
@@ -494,6 +497,28 @@ describe('GraphCanvas.vue', () => {
     expect(node).toBeTruthy()
     expect(node.shape).toBe('entity-node')
     expect(graph.getNodes()).toHaveLength(1)
+  })
+
+  it('卸载画布时取消添加节点后尚未执行的选中检查', async () => {
+    wrapper = await mountCanvas()
+    const graph = editorGraph()
+    const isSelected = vi.spyOn(graph, 'isSelected').mockReturnValue(true)
+    const unselect = vi.spyOn(graph, 'unselect')
+
+    vi.useFakeTimers()
+    try {
+      const node = wrapper.vm.addNode('entity')
+      vi.advanceTimersByTime(50)
+      expect(unselect).toHaveBeenCalledWith(node)
+
+      wrapper.unmount()
+      wrapper = null
+      isSelected.mockClear()
+      vi.advanceTimersByTime(150)
+      expect(isSelected).not.toHaveBeenCalled()
+    } finally {
+      vi.useRealTimers()
+    }
   })
 
   it('expose：updateNodeProperties / updateEdgeProperties 替换数据并刷新标签', async () => {

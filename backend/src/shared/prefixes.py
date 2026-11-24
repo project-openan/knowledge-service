@@ -16,4 +16,5 @@ RKB_PREFIX = '/api/knowledge-service/v1'
 GRAPH_RETRIEVE_PATH = f'{RKB_PREFIX}/retrieval/graph'
 
 #: 本地账号登录：``status/login/logout/me/password``。与其它领域共用 RKB_PREFIX。
-AUTH_PREFIX = f'{RKB_PREFIX}/auth'
+AUTH_PATH = '/auth'
+AUTH_PREFIX = f'{RKB_PREFIX}{AUTH_PATH}'

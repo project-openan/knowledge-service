@@ -3,8 +3,7 @@
 契约与其它 UI 接口一致（API 2.0.0）：成功是纯 JSON / 204，失败是真实状态码 +
 ``application/problem+json``。
 
-**注册顺序**：``register_auth_api`` 必须在 ``register_rkb_api`` 之前调用 —— 后者
-带一条 ``/{unknown_path:path}`` 兜底路由，会吃掉同前缀下晚注册的 ``/auth/*``。
+生产应用通过 ``http_api`` 统一挂载 API 前缀，独立宿主通过 ``register_auth_api`` 挂载。
 
 **鉴权边界**：``/auth/status``、``/auth/login``、``/auth/logout`` 公开（登录前
 没有会话）；``/auth/me``、``/auth/password`` 由 ``AuthMiddleware`` 要求会话。
@@ -21,7 +20,7 @@ from pydantic import BaseModel, Field
 from auth import repository as repo, service, sessions
 from auth.errors import AuthError, AuthStoreUnavailable, auth_not_enabled
 from infrastructure.http.identity import language
-from shared.prefixes import AUTH_PREFIX
+from shared.prefixes import AUTH_PATH, RKB_PREFIX
 from shared.problem import ProblemSpec, generic_detail, problem_response, title_for
 
 MAX_AUTH_BODY_BYTES = 8 * 1024
@@ -106,9 +105,9 @@ def _cookie_headers(request: Request, token: str) -> dict[str, str]:
 
 
 def build_router() -> APIRouter:
-    router = APIRouter()
+    router = APIRouter(prefix=AUTH_PATH)
 
-    @router.get(AUTH_PREFIX + '/status')
+    @router.get('/status')
     async def status(request: Request):
         """公开：前端据此决定是否启用登录守卫（同一份构建支持三种模式）。"""
         mode = service.auth_mode()
@@ -141,7 +140,7 @@ def build_router() -> APIRouter:
             headers=dict(_NO_STORE),
         )
 
-    @router.post(AUTH_PREFIX + '/login',
+    @router.post('/login',
                  dependencies=[Depends(_body_size_guard)])
     async def login(request: Request, payload: LoginRequest):
         _require_local_mode()
@@ -154,7 +153,7 @@ def build_router() -> APIRouter:
             {'user': result.user.to_public()},
             headers=_cookie_headers(request, result.token))
 
-    @router.post(AUTH_PREFIX + '/logout')
+    @router.post('/logout')
     async def logout(request: Request):
         token = sessions.extract_session_token(request.cookies)
         service.logout(token)
@@ -164,14 +163,14 @@ def build_router() -> APIRouter:
         }
         return Response(status_code=204, headers=headers)
 
-    @router.get(AUTH_PREFIX + '/me')
+    @router.get('/me')
     async def me(request: Request):
         _require_local_mode()
         token = sessions.extract_session_token(request.cookies)
         user = getattr(request.state, 'auth_user', None) or service.validate_session(token)
         return JSONResponse({'user': user.to_public()}, headers=dict(_NO_STORE))
 
-    @router.post(AUTH_PREFIX + '/password',
+    @router.post('/password',
                  dependencies=[Depends(_body_size_guard)])
     async def change_password(request: Request, payload: ChangePasswordRequest):
         _require_local_mode()
@@ -197,5 +196,5 @@ def register_auth_api(app: FastAPI) -> None:
     生产装配走 ``http_api``：路由并入统一注册序列，处理器经
     :func:`register_auth_exception_handlers` 挂载。
     """
-    app.include_router(build_router())
+    app.include_router(build_router(), prefix=RKB_PREFIX)
     register_auth_exception_handlers(app)

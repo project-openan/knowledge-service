@@ -21,7 +21,9 @@ vi.mock('@/features/chat/api/chat', () => ({
 }))
 
 vi.mock('@/features/workflow/api', () => ({
-  getFlowList: (...args) => workflowApi.getFlowList(...args)
+  getFlowList: (...args) => workflowApi.getFlowList(...args),
+  getPublishedFlowConfig: (...args) => workflowApi.getPublishedFlowConfig(...args),
+  getAllStatusKbase: (...args) => workflowApi.getAllStatusKbase(...args)
 }))
 
 vi.mock('@/shared/composables/deletion', async importOriginal => {
@@ -70,6 +72,8 @@ const SelectStub = {
 
 async function mountPage () {
   workflowApi.getFlowList = vi.fn(async () => ({ items: WORKFLOWS, total: 2 }))
+  workflowApi.getPublishedFlowConfig = vi.fn(async () => ({ nodeConfigDTOList: [] }))
+  workflowApi.getAllStatusKbase = vi.fn(async () => ({ running: [], dev: [] }))
   chatApi.chatQueryStream = vi.fn()
   deletionApi.requestDeletion = vi.fn(async () => true)
   sideEffects.download = vi.fn()
@@ -399,11 +403,12 @@ describe('检索链路与消息展示', () => {
 
   it('missingKbLabels：绑定库匹配不上的告警换可读名', async () => {
     const wrapper = await mountPage()
+    workflowApi.getPublishedFlowConfig.mockResolvedValue({
+      nodeConfigDTOList: [{ knowledge_base_name: ['doc_kb-1', 'doc_ghost', 'graph_g1'] }]
+    })
+    await wrapper.vm.refreshWorkflows()
     wrapper.vm.publishedWorkflows[0].kbPkIds = [{ name: '手册库', assetId: 'asset-1', tableName: 'doc_kb-1' }]
-    wrapper.vm.missingKbNames = ['doc_kb-1', 'doc_ghost', 'graph_g1']
-    await flush()
-    const labels = wrapper.vm.missingKbLabels
-    expect(labels).toEqual(['手册库', 'doc_ghost', 'graph_g1'])
+    expect(wrapper.vm.missingKbLabels).toEqual(['手册库', 'doc_ghost', 'graph_g1'])
   })
 
   it('消息操作：复制成功/失败、点赞取消', async () => {

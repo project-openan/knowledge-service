@@ -62,6 +62,7 @@ const { proxy } = getCurrentInstance() as any
 
 const containerRef = ref<HTMLElement>()
 let graph: Graph | null = null
+const pendingNodeSelectionChecks = new Set<ReturnType<typeof setTimeout>>()
 
 const emit = defineEmits(['node-select', 'edge-select', 'canvas-click', 'initialized'])
 
@@ -194,6 +195,10 @@ onMounted(async() => {
 })
 
 onUnmounted(() => {
+  for (const timer of pendingNodeSelectionChecks) {
+    clearTimeout(timer)
+  }
+  pendingNodeSelectionChecks.clear()
   window.removeEventListener('resize', handleResize)
   window.removeEventListener(THEME_CHANGE_EVENT, applyGraphTheme)
   if (graph) {
@@ -890,22 +895,21 @@ const addNode = (nodeType: string) => {
       checkAndResolveOverlap(node)
     }, 10)
 
-    // 多次确保节点不会被自动选中
-    setTimeout(() => {
-      if (graph.isSelected(node)) {
-        graph.unselect(node)
-      }
-      hideNodePorts(node)
-      setNodeSelectedStyle(node, false)
-    }, 50)
-
-    setTimeout(() => {
-      if (graph.isSelected(node)) {
-        graph.unselect(node)
-      }
-      hideNodePorts(node)
-      setNodeSelectedStyle(node, false)
-    }, 150)
+    // X6 可能在节点添加后异步选中它，卸载画布时取消待执行的检查。
+    for (const delay of [50, 150]) {
+      const timer = setTimeout(() => {
+        pendingNodeSelectionChecks.delete(timer)
+        if (!graph || graph.getCellById(node.id) !== node) {
+          return
+        }
+        if (graph.isSelected(node)) {
+          graph.unselect(node)
+        }
+        hideNodePorts(node)
+        setNodeSelectedStyle(node, false)
+      }, delay)
+      pendingNodeSelectionChecks.add(timer)
+    }
 
     return node
   } catch (error) {
